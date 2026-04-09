@@ -112,3 +112,4 @@ underhuset-app/
 ├── .env.example             # Variables de entorno
 └── package.json
 ```
+# rebuild
