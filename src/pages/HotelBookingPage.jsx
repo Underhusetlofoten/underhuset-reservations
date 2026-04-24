@@ -168,30 +168,27 @@ export default function HotelBookingPage() {
 
   return (
     <div style={{
-      minHeight:'100vh',
-      background:`linear-gradient(135deg, #EAF0FD 0%, #fff 50%, ${B.orangeLight} 100%)`,
-      display:'flex', flexDirection:'column', alignItems:'center', padding:'24px 16px 60px',
+      minHeight:'100vh', position:'relative',
+      display:'flex', flexDirection:'column', alignItems:'center',
+      padding:'24px 16px 60px',
       fontFamily:"'DM Sans','Helvetica Neue',sans-serif",
     }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@400;500;700&display=swap');`}</style>
-
-      {/* Header */}
-      <div style={{ textAlign:'center', marginBottom:28 }}>
-        <div style={{ display:'inline-flex', alignItems:'center', gap:10, marginBottom:4 }}>
-          <div style={{ width:36,height:36,borderRadius:10,background:B.orange,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18 }}>🍳</div>
-          <span style={{ fontFamily:'Playfair Display,serif', fontSize:22, fontWeight:700, color:B.dark }}>Underhuset</span>
+      {/* Background photo */}
+      <div style={{ position:'fixed', inset:0, zIndex:0, backgroundImage:'url(/restaurant.jpg)', backgroundSize:'cover', backgroundPosition:'center', filter:'brightness(0.35)' }}/>
+      {/* Content */}
+      <div style={{ position:'relative', zIndex:1, width:'100%', display:'flex', flexDirection:'column', alignItems:'center' }}>
+        {/* Logo */}
+        <div style={{ textAlign:'center', marginBottom:24 }}>
+          <img src="/logo.png" alt="Underhuset" style={{ height:110, objectFit:'contain', display:'block', margin:'0 auto' }}/>
+          <div style={{ fontSize:11, color:'rgba(255,255,255,.6)', letterSpacing:'.1em', textTransform:'uppercase', marginTop:8 }}>Breakfast Buffet · Reservations</div>
+          {partnerName && (
+            <div style={{ marginTop:6, fontSize:12, color:'#fff', fontWeight:600, background:'rgba(255,255,255,.15)', padding:'4px 14px', borderRadius:20, display:'inline-block' }}>
+              {partnerName}
+            </div>
+          )}
         </div>
-        <div style={{ fontSize:11, color:B.gray, letterSpacing:'.08em', textTransform:'uppercase' }}>
-          Breakfast Buffet · Hotel Reservations
-        </div>
-        {partnerName && (
-          <div style={{ marginTop:6, fontSize:12, color:B.blue, fontWeight:600, background:B.blueLight, padding:'4px 14px', borderRadius:20, display:'inline-block' }}>
-            {partnerName}
-          </div>
-        )}
-      </div>
-
-      <div style={{ width:'100%', maxWidth:500, background:'#FAF6F0', borderRadius:24, padding:'28px 24px', boxShadow:`0 8px 48px rgba(60,66,66,.12)` }}>
+        <div style={{ width:'100%', maxWidth:500, background:'rgba(255,255,255,0.97)', borderRadius:24, padding:'28px 24px', boxShadow:'0 8px 48px rgba(0,0,0,.3)' }}>
 
         {/* Info bar */}
         <div style={{ background:B.blueLight, borderRadius:12, padding:'10px 16px', marginBottom:24, display:'flex', gap:16, justifyContent:'center', flexWrap:'wrap' }}>
@@ -315,6 +312,7 @@ export default function HotelBookingPage() {
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   )

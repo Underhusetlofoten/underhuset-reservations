@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { supabase } from '../lib/supabase.js'
 import { B, STATUS_COLOR, ALL_TIMES, MONTHS_EN, DAYS_SHORT, DAY_KEYS, DAY_NAMES, BLOCK_HOURS } from '../brand.js'
 import StatsTab from './StatsTab.jsx'
 import {
@@ -287,7 +288,7 @@ function ReservationForm({ initial={}, tables=[], onSave, onCancel, loading }) {
     })
   }, [f.date, f.time])
 
-  const valid = f.date && f.time && f.guests && f.first_name && f.last_name && f.email && f.phone
+  const valid = f.date && f.time && f.guests && f.first_name && f.email && f.phone
 
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
@@ -313,7 +314,7 @@ function ReservationForm({ initial={}, tables=[], onSave, onCancel, loading }) {
         }/>
       </div>
       <div><Input label="First name *" value={f.first_name} onChange={v=>upd('first_name',v)} /></div>
-      <div><Input label="Last name *"  value={f.last_name}  onChange={v=>upd('last_name',v)} /></div>
+      <div><Input label="Last name"  value={f.last_name}  onChange={v=>upd('last_name',v)} /></div>
       <div style={{ gridColumn:'1/-1' }}><Input label="Email *" type="email" value={f.email} onChange={v=>upd('email',v)} /></div>
       <div style={{ gridColumn:'1/-1' }}><Input label="Phone *" type="tel" value={f.phone} onChange={v=>upd('phone',v)} /></div>
       <div style={{ gridColumn:'1/-1' }}>
@@ -1010,6 +1011,18 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
   const [confirm,     setConfirm]     = useState(null)
   const [saving,      setSaving]      = useState(false)
   const [exporting,   setExporting]   = useState(false)
+  const [staffDay,    setStaffDay]    = useState('')
+  const [staffSaving, setStaffSaving] = useState(false)
+
+  const applyStaffToDay = async () => {
+    if (!staffDay || !dateFilter) return
+    setStaffSaving(true)
+    try {
+      const dayResos = breakfast.filter(r => r.date === dateFilter && r.status !== 'cancelled')
+      await Promise.all(dayResos.map(r => updateBreakfastReservation(r.id, { staff_names: staffDay })))
+      onRefresh()
+    } finally { setStaffSaving(false) }
+  }
 
   let hotels = []
   try { hotels = JSON.parse(settings.hotels||'[]') } catch {}
@@ -1039,8 +1052,8 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
 
   const exportCSV = () => {
     const rows = [
-      ['Date','Hotel','Guests','Contact','Email','Phone','Notes','Status'],
-      ...filtered.map(r=>[r.date, r.hotel, r.guests, r.contact_name, r.contact_email||'', r.contact_phone||'', r.notes||'', r.status])
+      ['Date','Hotel','Guests','Contact','Email','Phone','Notes','Staff','Status'],
+      ...filtered.map(r=>[r.date, r.hotel, r.guests, r.contact_name, r.contact_email||'', r.contact_phone||'', r.notes||'', r.staff_names||'', r.status])
     ]
     const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type:'text/csv' })
@@ -1050,7 +1063,7 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
     a.click()
   }
 
-  const BFORM_EMPTY = { date:'', guests:1, hotel:'', contact_name:'', contact_email:'', contact_phone:'', notes:'', status:'confirmed' }
+  const BFORM_EMPTY = { date:'', guests:1, hotel:'', contact_name:'', contact_email:'', contact_phone:'', notes:'', staff_names:'', status:'confirmed' }
 
   const BreakfastForm = ({ initial={}, onSave, onCancel }) => {
     const [f, setF] = useState({ ...BFORM_EMPTY, ...initial })
@@ -1078,6 +1091,8 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
             style={{...S.input, cursor:'pointer', appearance:'auto'}}
             onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}>
             <option value="">Select…</option>
+            <option value="None">None</option>
+            <option value="Sakrisøy Rorbuer">Sakrisøy Rorbuer</option>
             {hotels.map(h=><option key={h} value={h}>{h}</option>)}
           </select>
         </div>
@@ -1102,6 +1117,10 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
             style={{...S.input, resize:'vertical'}}
             onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
         </div>
+        <div>
+          <label style={S.label}>Staff on duty</label>
+          <input placeholder="e.g. Maria, Sofia" value={f.staff_names||''} onChange={e=>upd('staff_names',e.target.value)} style={S.input} onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
+        </div>
         <div style={{ display:'flex', gap:12 }}>
           <Btn variant="secondary" onClick={onCancel} style={{ flex:1 }}>Cancel</Btn>
           <Btn onClick={()=>onSave(f)} disabled={!valid||saving} style={{ flex:2 }}>
@@ -1117,6 +1136,7 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
         <h2 style={{ fontFamily:'Playfair Display,serif', fontSize:22, color:B.dark, fontWeight:600 }}>🍳 Breakfast & Hotels</h2>
         <div style={{ display:'flex', gap:8 }}>
+          <Btn size="sm" variant="secondary" onClick={()=>setDateFilter(todayISO())} style={{background: dateFilter===todayISO()?'#F99D54':'', color: dateFilter===todayISO()?'#fff':''}}>📅 Today</Btn>
           <Btn size="sm" variant="secondary" onClick={exportCSV}>⬇ Export CSV</Btn>
           <Btn size="sm" onClick={()=>setNewModal(true)}>+ New reservation</Btn>
         </div>
@@ -1127,8 +1147,9 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
         <div style={{ fontSize:12, fontWeight:700, color:B.blue, marginBottom:10, letterSpacing:'.05em', textTransform:'uppercase' }}>🔗 Hotel booking links</div>
         <div style={{ display:'grid', gap:8 }}>
           {[
-            { label:"Ingrid's link", path:'/hotel/ingrid' },
-            { label:"Marta's link",  path:'/hotel/marta'  },
+            { label:"Ingrid's link",   path:'/hotel/ingrid' },
+            { label:"Marta's link",    path:'/hotel/marta'  },
+            { label:'Sakrisøy Rorbuer', path:'/breakfast'   },
           ].map(({ label, path })=>(
             <div key={path} style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
               <span style={{ fontSize:12, color:B.blue, fontWeight:600, minWidth:100 }}>{label}</span>
@@ -1179,11 +1200,20 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
         </div>
       </div>
 
+      {/* Staff on duty */}
+      {dateFilter && (
+        <div style={{ background:'#FEF4EB', borderRadius:12, padding:'12px 16px', marginBottom:16, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+          <span style={{ fontSize:13, fontWeight:700, color:'#3C4242' }}>👤 Staff on duty — {dateFilter}</span>
+          <input placeholder="e.g. Maria, Sofia" value={staffDay} onChange={e=>setStaffDay(e.target.value)} style={{ padding:'8px 12px', borderRadius:8, border:'2px solid #F99D54', fontSize:13, outline:'none', minWidth:180 }}/>
+          <Btn size="sm" onClick={applyStaffToDay} disabled={staffSaving || staffDay===''}>{staffSaving ? 'Saving…' : 'Apply to all today'}</Btn>
+        </div>
+      )}
+
       {/* Table */}
       <div style={{ ...S.card, padding:0, overflow:'auto' }}>
         <table style={{ width:'100%', borderCollapse:'collapse', minWidth:700 }}>
           <thead>
-            <tr>{['Date','Property','Guests','Contact','Email','Notes','Status',''].map(h=><th key={h} style={S.th}>{h}</th>)}</tr>
+            <tr>{['Date','Property','Guests','Contact','Email','Staff','Notes','Status',''].map(h=><th key={h} style={S.th}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {filtered.length===0&&<tr><td colSpan={8} style={{...S.td,textAlign:'center',color:B.gray,padding:40}}>No results</td></tr>}
@@ -1195,12 +1225,13 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
                 <td style={{...S.td,fontWeight:700}}>👥 {r.guests}</td>
                 <td style={S.td}>{r.contact_name}</td>
                 <td style={{...S.td,fontSize:12,color:B.gray}}>{r.contact_email}</td>
+                <td style={S.td}>{r.staff_names||<span style={{ color:B.grayLight }}>—</span>}</td>
                 <td style={{...S.td,maxWidth:150}}>
                   {r.notes?<span title={r.notes} style={{ fontSize:12,color:B.darkSoft,fontStyle:'italic',cursor:'help',display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:140 }}>{r.notes}</span>:<span style={{ color:B.grayLight }}>—</span>}
                 </td>
                 <td style={S.td}>
-                  <span style={{ background:r.status==='cancelled'?B.redLight:B.greenLight, color:r.status==='cancelled'?B.red:B.green, padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700 }}>
-                    {r.status==='cancelled'?'Cancelled':'Confirmed'}
+                  <span onClick={async()=>{ const next=r.status==='confirmed'?'seated':r.status==='seated'?'cancelled':'confirmed'; await updateBreakfastReservation(r.id,{status:next}); onRefresh() }} style={{ background:r.status==='cancelled'?B.redLight:r.status==='seated'?'#e8f5e9':'#fff3e0', color:r.status==='cancelled'?B.red:r.status==='seated'?'#2e7d32':'#e65100', padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, cursor:'pointer', userSelect:'none', title:'Click to change status' }}>
+                    {r.status==='cancelled'?'❌ Cancelled':r.status==='seated'?'✅ Seated':'🟡 Confirmed'}
                   </span>
                 </td>
                 <td style={{...S.td,whiteSpace:'nowrap'}}>
@@ -1441,7 +1472,52 @@ const TABS = [
   { id:'settings',     icon:'⚙️', label:'Settings'     },
 ]
 
-export default function AdminPage() {
+function LoginPage({ onLogin }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  const handleLogin = async () => {
+    setLoading(true); setError(null)
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) { setError('Invalid email or password'); setLoading(false) }
+    else onLogin()
+  }
+
+  return (
+    <div style={{ minHeight:'100vh', background:'#FAF6F0', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'DM Sans','Helvetica Neue',sans-serif" }}>
+      <div style={{ background:'#fff', borderRadius:20, padding:'40px 36px', boxShadow:'0 8px 40px rgba(60,66,66,.12)', width:'100%', maxWidth:380 }}>
+        <div style={{ textAlign:'center', marginBottom:28 }}>
+          <div style={{ fontSize:32, marginBottom:8 }}>🍽️</div>
+          <h2 style={{ fontFamily:'Playfair Display,serif', fontSize:22, color:'#3C4242', margin:0 }}>Underhuset</h2>
+          <p style={{ color:'#8A8F8F', fontSize:13, margin:'6px 0 0' }}>Backoffice — Staff only</p>
+        </div>
+        <div style={{ marginBottom:16 }}>
+          <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#3C4242', marginBottom:6, letterSpacing:'.05em', textTransform:'uppercase' }}>Email</label>
+          <input type="email" value={email} onChange={e=>setEmail(e.target.value)}
+            style={{ width:'100%', padding:'12px 14px', borderRadius:10, border:'2px solid #E2E6E6', fontSize:14, outline:'none', boxSizing:'border-box' }}
+            onFocus={e=>e.target.style.borderColor='#F99D54'} onBlur={e=>e.target.style.borderColor='#E2E6E6'}
+            onKeyDown={e=>e.key==='Enter'&&handleLogin()}/>
+        </div>
+        <div style={{ marginBottom:20 }}>
+          <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#3C4242', marginBottom:6, letterSpacing:'.05em', textTransform:'uppercase' }}>Password</label>
+          <input type="password" value={password} onChange={e=>setPassword(e.target.value)}
+            style={{ width:'100%', padding:'12px 14px', borderRadius:10, border:'2px solid #E2E6E6', fontSize:14, outline:'none', boxSizing:'border-box' }}
+            onFocus={e=>e.target.style.borderColor='#F99D54'} onBlur={e=>e.target.style.borderColor='#E2E6E6'}
+            onKeyDown={e=>e.key==='Enter'&&handleLogin()}/>
+        </div>
+        {error && <p style={{ color:'#E05252', fontSize:13, textAlign:'center', marginBottom:12 }}>{error}</p>}
+        <button onClick={handleLogin} disabled={loading||!email||!password} style={{
+          width:'100%', padding:'14px', borderRadius:12, border:'none', background: loading||!email||!password?'#E2E6E6':'#F99D54',
+          color: loading||!email||!password?'#8A8F8F':'#fff', fontSize:15, fontWeight:700, cursor: loading||!email||!password?'not-allowed':'pointer'
+        }}>{loading ? 'Signing in…' : 'Sign in'}</button>
+      </div>
+    </div>
+  )
+}
+
+function AdminContent() {
   const [tab,          setTab]          = useState('dashboard')
   const [reservations, setReservations] = useState([])
   const [tables,       setTables]       = useState([])
@@ -1543,6 +1619,7 @@ export default function AdminPage() {
           <span style={{ fontFamily:'Playfair Display,serif', fontSize:16, fontWeight:700, color:'#fff' }}>Underhuset</span>
           <span style={{ fontSize:11, color:'rgba(255,255,255,.4)', letterSpacing:'.06em', textTransform:'uppercase', marginLeft:8 }}>Admin</span>
         </div>
+        <button onClick={()=>supabase.auth.signOut()} style={{ background:'rgba(255,255,255,.1)', border:'none', borderRadius:8, color:'rgba(255,255,255,.7)', fontSize:13, fontWeight:600, padding:'6px 14px', cursor:'pointer' }}>Sign out</button>
         <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
           {TABS.map(t=>(
             <button key={t.id} onClick={()=>setTab(t.id)} style={{
@@ -1563,7 +1640,7 @@ export default function AdminPage() {
       </div>
 
       {/* Content */}
-      <div style={{ maxWidth:1200, margin:'0 auto', padding:'28px 24px' }}>
+      <div style={{ maxWidth:'95%', margin:'0 auto', padding:'28px 24px' }}>
         {loading ? <div style={{ textAlign:'center', padding:80, color:B.gray }}>Loading…</div> : (
           <>
             {tab==='dashboard'    && <Dashboard reservations={reservations} tables={tables}
@@ -1588,4 +1665,18 @@ export default function AdminPage() {
       {walkInModal && <WalkInModal tables={tables} onSave={handleWalkIn} onClose={()=>setWalkInModal(false)} loading={saving}/>}
     </div>
   )
+}
+
+export default function AdminPage() {
+  const [session, setSession] = useState(undefined)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+    return () => subscription.unsubscribe()
+  }, [])
+
+  if (session === undefined) return null
+  if (!session) return <LoginPage onLogin={() => {}} />
+  return <AdminContent />
 }

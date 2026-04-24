@@ -613,7 +613,7 @@ function PageWrapper({ children }) {
         {/* Logo */}
         <div style={{ textAlign:'center', marginBottom:24 }}>
           <img src="/logo.png" alt="Underhuset" style={{ height:110, objectFit:'contain', display:'block', margin:'0 auto' }}/>
-          <div style={{ fontSize:11, color:'rgba(255,255,255,.6)', letterSpacing:'.1em', textTransform:'uppercase', marginTop:8 }}>Sakrisøy · Reine · Lofoten</div>
+          <div style={{ fontSize:11, color:'rgba(255,255,255,.6)', letterSpacing:'.1em', textTransform:'uppercase', marginTop:8 }}>Sakrisøy</div>
         </div>
         <div style={{
           width:'100%', maxWidth:520,
