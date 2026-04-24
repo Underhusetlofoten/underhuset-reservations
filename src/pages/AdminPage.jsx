@@ -1517,7 +1517,7 @@ function LoginPage({ onLogin }) {
   )
 }
 
-function AdminContent() {
+function AdminContent({ role }) {
   const [tab,          setTab]          = useState('dashboard')
   const [reservations, setReservations] = useState([])
   const [tables,       setTables]       = useState([])
@@ -1621,7 +1621,7 @@ function AdminContent() {
         </div>
         <button onClick={()=>supabase.auth.signOut()} style={{ background:'rgba(255,255,255,.1)', border:'none', borderRadius:8, color:'rgba(255,255,255,.7)', fontSize:13, fontWeight:600, padding:'6px 14px', cursor:'pointer' }}>Sign out</button>
         <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-          {TABS.map(t=>(
+          {TABS.filter(t => t.id !== 'settings' || role === 'admin').map(t=>(
             <button key={t.id} onClick={()=>setTab(t.id)} style={{
               background:tab===t.id?B.orange:'transparent', border:'none', borderRadius:8, cursor:'pointer',
               padding:'6px 12px', color:tab===t.id?'#fff':'rgba(255,255,255,.6)',
@@ -1654,7 +1654,7 @@ function AdminContent() {
             {tab==='breakfast' && <BreakfastTab breakfast={breakfast} settings={settings} onRefresh={loadAll}/>}
             {tab==='stats'     && <StatsTab reservations={reservations} breakfast={breakfast} settings={settings}/>}
             {tab==='tables'    && <TablesManager tables={tables} onRefresh={loadAll}/>}
-            {tab==='settings'  && <SettingsTab settings={settings} onSave={s=>setSettings(s)}/>}
+            {tab==='settings' && role==='admin' && <SettingsTab settings={settings} onSave={s=>setSettings(s)}/>}
           </>
         )}
       </div>
@@ -1669,14 +1669,27 @@ function AdminContent() {
 
 export default function AdminPage() {
   const [session, setSession] = useState(undefined)
+  const [role, setRole] = useState(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      if (data.session) loadRole(data.session.user.id)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+      setSession(s)
+      if (s) loadRole(s.user.id)
+      else setRole(null)
+    })
     return () => subscription.unsubscribe()
   }, [])
 
+  const loadRole = async (userId) => {
+    const { data } = await supabase.from('user_roles').select('role').eq('user_id', userId).single()
+    setRole(data?.role || 'staff')
+  }
+
   if (session === undefined) return null
   if (!session) return <LoginPage onLogin={() => {}} />
-  return <AdminContent />
+  return <AdminContent role={role} />
 }
