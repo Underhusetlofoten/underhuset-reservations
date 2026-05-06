@@ -117,6 +117,11 @@ export default function HotelBookingPage() {
       .then(setAvail)
   }, [date, settings])
 
+  let breakfastDays = {}
+  let breakfastClosedPeriods = []
+  try { breakfastDays = JSON.parse(settings.breakfast_days||'{}') } catch {}
+  try { breakfastClosedPeriods = JSON.parse(settings.breakfast_closed_periods||'[]') } catch {}
+
   const maxGuests = parseInt(settings.breakfast_max_guests||44)
   const from = settings.breakfast_from || '08:00'
   const to   = settings.breakfast_to   || '11:00'
@@ -202,7 +207,7 @@ export default function HotelBookingPage() {
               <div>
                 <h2 style={{ textAlign:'center', fontSize:20, fontFamily:'Playfair Display,serif', color:B.dark, marginBottom:6, fontWeight:600 }}>Select date</h2>
                 <p style={{ textAlign:'center', color:B.gray, fontSize:13, marginBottom:20 }}>Choose the breakfast date</p>
-                <CalendarStep selected={date} onSelect={d=>{ setDate(d); setAvail(null) }} />
+                <CalendarStep selected={date} onSelect={d=>{ setDate(d); setAvail(null) }} breakfastDays={breakfastDays} closedPeriods={breakfastClosedPeriods} />
                 {date && avail !== null && (
                   <div style={{ marginTop:16, padding:12, borderRadius:10,
                     background:avail>0?B.greenLight:B.redLight,
