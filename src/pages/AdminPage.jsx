@@ -1148,8 +1148,8 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
         <div style={{ fontSize:12, fontWeight:700, color:B.blue, marginBottom:10, letterSpacing:'.05em', textTransform:'uppercase' }}>🔗 Hotel booking links</div>
         <div style={{ display:'grid', gap:8 }}>
           {[
-            { label:"Ingrid's link",   path:'/hotel/ingrid' },
-            { label:"Marta's link",    path:'/hotel/marta'  },
+            { label:"Ingrid's link",   path:'/ingrid' },
+            { label:"Marta's link",    path:'/marta'  },
             { label:'Sakrisøy Rorbuer', path:'/breakfast-sakrisoy' },
             { label:'General (no property)', path:'/breakfast' },
           ].map(({ label, path })=>(
