@@ -10,6 +10,7 @@ export async function getReservations({ date, status } = {}) {
   let q = supabase
     .from('reservations')
     .select('*, table:tables(id,name,zone,capacity)')
+    .is('deleted_at', null)
     .order('date').order('time')
   if (date)   q = q.eq('date', date)
   if (status) q = q.eq('status', status)
@@ -39,8 +40,23 @@ export async function updateReservation(id, payload) {
   return data
 }
 
+export async function getDeletedReservations() {
+  const { data, error } = await supabase
+    .from('reservations')
+    .select('*')
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function restoreReservation(id) {
+  const { error } = await supabase.from('reservations').update({ deleted_at: null }).eq('id', id)
+  if (error) throw error
+}
+
 export async function deleteReservation(id) {
-  const { error } = await supabase.from('reservations').delete().eq('id', id)
+  const { error } = await supabase.from('reservations').update({ deleted_at: new Date().toISOString() }).eq('id', id)
   if (error) throw error
 }
 

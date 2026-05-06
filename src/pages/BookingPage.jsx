@@ -65,7 +65,7 @@ function Steps({ step, isWaitlist }) {
 
 // ─── Step 0: Calendar ─────────────────────────────────────────────────────────
 
-function CalendarStep({ selected, onSelect, openingHours }) {
+function CalendarStep({ selected, onSelect, openingHours, closedPeriods=[] }) {
   const today = new Date()
   const [y, setY] = useState(today.getFullYear())
   const [m, setM] = useState(today.getMonth())
@@ -78,7 +78,9 @@ function CalendarStep({ selected, onSelect, openingHours }) {
     const d = new Date(y, m, day)
     const dow = (d.getDay() + 6) % 7
     const key = dayKeys[dow]
-    return openingHours && openingHours[key] && !openingHours[key].open
+    if (openingHours && openingHours[key] && !openingHours[key].open) return true
+    const iso = `${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+    return closedPeriods.some(p => iso >= p.from && iso <= p.to)
   }
   const isPast = (day) => {
     const d = new Date(y,m,day); d.setHours(0,0,0,0)
@@ -493,7 +495,7 @@ function WaitlistFlow({ date, time, onBack }) {
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
-const titleStyle = { textAlign:'center', fontSize:22, fontFamily:'Playfair Display,serif', color:B.dark, marginBottom:6, fontWeight:600 }
+const titleStyle = { textAlign:'center', fontSize:22, fontFamily:'Playfair Display,serif', color:'#FAF6F0', marginBottom:6, fontWeight:600 }
 const subStyle   = { textAlign:'center', color:B.gray, fontSize:14, marginBottom:24 }
 const cardStyle  = { background:'#fff', borderRadius:16, padding:24, boxShadow:`0 2px 20px rgba(60,66,66,.08)` }
 const labelStyle = { display:'block', fontSize:11, fontWeight:700, color:B.dark, marginBottom:6, letterSpacing:'.05em', textTransform:'uppercase' }
@@ -513,6 +515,7 @@ export default function BookingPage() {
   const [error,        setError]        = useState(null)
   const [waitlistTime, setWaitlistTime] = useState(null)
   const [openingHours, setOpeningHours] = useState(null)
+  const [closedPeriods, setClosedPeriods] = useState([])
   const [minGuests,    setMinGuests]    = useState(1)
   const [maxGuests,    setMaxGuests]    = useState(4)
   const [lunchEnabled, setLunchEnabled] = useState(true)
@@ -521,6 +524,7 @@ export default function BookingPage() {
   useEffect(() => {
     getSettings().then(s => {
       try { setOpeningHours(JSON.parse(s.opening_hours || '{}')) } catch {}
+      try { setClosedPeriods(JSON.parse(s.closed_periods || '[]')) } catch {}
       setMinGuests(parseInt(s.min_guests_online||1))
       setMaxGuests(parseInt(s.max_guests_online||4))
       setLunchEnabled(s.lunch_enabled !== 'false')
@@ -571,7 +575,7 @@ export default function BookingPage() {
         <>
           <Steps step={step} />
           <div>
-            {step===0 && <CalendarStep selected={date} onSelect={d=>{setDate(d);setTime(null)}} openingHours={openingHours} />}
+            {step===0 && <CalendarStep selected={date} onSelect={d=>{setDate(d);setTime(null)}} openingHours={openingHours} closedPeriods={closedPeriods} />}
             {step===1 && <TimeStep selected={time} onSelect={setTime} date={date} openingHours={openingHours}
               lunchEnabled={lunchEnabled} dinnerEnabled={dinnerEnabled}
               onJoinWaitlist={t=>{ setWaitlistTime(t) }} />}

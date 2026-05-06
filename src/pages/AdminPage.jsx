@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase.js'
 import { B, STATUS_COLOR, ALL_TIMES, MONTHS_EN, DAYS_SHORT, DAY_KEYS, DAY_NAMES, BLOCK_HOURS } from '../brand.js'
 import StatsTab from './StatsTab.jsx'
 import {
-  getReservations, createReservation, updateReservation, deleteReservation,
+  getReservations, createReservation, updateReservation, deleteReservation, getDeletedReservations, restoreReservation,
   seatReservation, earlyFreeReservation,
   getTables, createTable, updateTable, deleteTable,
   getSettings, setSetting, getOccupiedTablesForSlot,
@@ -732,13 +732,14 @@ function ReservationsList({ reservations, tables, onNew, onEdit, onDelete, onSea
       <div style={{ ...S.card, padding:0, overflow:'auto' }}>
         <table style={{ width:'100%', borderCollapse:'collapse', minWidth:800 }}>
           <thead>
-            <tr>{['Date','Time','Name','Guests','Table','Status','Source','Notes',''].map(h=><th key={h} style={S.th}>{h}</th>)}</tr>
+            <tr>{['Code','Date','Time','Name','Guests','Table','Status','Source','Notes',''].map(h=><th key={h} style={S.th}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {filtered.length===0&&<tr><td colSpan={9} style={{...S.td,textAlign:'center',color:B.gray,padding:40}}>No results</td></tr>}
             {filtered.map(r=>(
               <tr key={r.id} onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                <td style={{...S.td,fontWeight:700,fontSize:12,color:B.gray}}>{r.reservation_code||'—'}</td>
                 <td style={{...S.td,fontWeight:600}}>{fmtDate(r.date)}</td>
                 <td style={{...S.td,fontWeight:700}}>{fmtTime(r.time)}</td>
                 <td style={S.td}>
@@ -1327,6 +1328,33 @@ function SettingsTab({ settings, onSave }) {
           </div>
         </div>
 
+        {/* Breakfast days */}
+        <div style={S.card}>
+          <h3 style={{ fontSize:15, fontWeight:700, color:B.dark, marginBottom:16 }}>🍳 Breakfast Days</h3>
+          <div style={{ display:'grid', gap:12 }}>
+            {DAY_KEYS.map((key,i)=>{
+              let bdays = {}
+              try { bdays = JSON.parse(s.breakfast_days||'{}') } catch {}
+              const d = bdays[key] !== undefined ? bdays[key] : true
+              return (
+                <div key={key} style={{ padding:'8px 0', borderBottom:`1px solid ${B.grayLight}` }}>
+                  <Toggle checked={!!d} onChange={v=>{
+                    let cur = {}; try { cur = JSON.parse(s.breakfast_days||'{}') } catch {}
+                    cur[key] = v
+                    upd('breakfast_days', JSON.stringify(cur))
+                  }} label={DAY_NAMES[i]}/>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Breakfast closed periods */}
+        <div style={S.card}>
+          <h3 style={{ fontSize:15, fontWeight:700, color:B.dark, marginBottom:16 }}>🚫 Breakfast Closed Periods</h3>
+          <ClosedPeriods settings={{ closed_periods: s.breakfast_closed_periods||'[]' }} onUpdate={(_,v)=>upd('breakfast_closed_periods',v)}/>
+        </div>
+
         {/* Emails */}
         <div style={S.card}>
           <h3 style={{ fontSize:15, fontWeight:700, color:B.dark, marginBottom:16 }}>📧 Automatic Emails</h3>
@@ -1454,11 +1482,68 @@ function SettingsTab({ settings, onSave }) {
           })}
         </div>
 
+        {/* Closed periods */}
+        <div style={S.card}>
+          <h3 style={{ fontSize:15, fontWeight:700, color:B.dark, marginBottom:16 }}>🚫 Closed Periods</h3>
+          <ClosedPeriods settings={s} onUpdate={upd}/>
+        </div>
+
         <div><Btn onClick={save}>{saved?'✓ Saved':'Save changes'}</Btn></div>
       </div>
     </div>
   )
 }
+
+function ClosedPeriods({ settings, onUpdate }) {
+  let periods = []
+  try { periods = JSON.parse(settings.closed_periods||'[]') } catch {}
+  const [from, setFrom] = useState('')
+  const [to,   setTo]   = useState('')
+  const [label, setLabel] = useState('')
+
+  const add = () => {
+    if (!from || !to) return
+    const updated = [...periods, { from, to, label: label||'Closed' }]
+    onUpdate('closed_periods', JSON.stringify(updated))
+    setFrom(''); setTo(''); setLabel('')
+  }
+
+  const remove = (i) => {
+    const updated = periods.filter((_,idx)=>idx!==i)
+    onUpdate('closed_periods', JSON.stringify(updated))
+  }
+
+  return (
+    <div style={{ display:'grid', gap:12 }}>
+      {periods.length===0 && <p style={{ fontSize:13, color:B.gray }}>No closed periods set.</p>}
+      {periods.map((p,i)=>(
+        <div key={i} style={{ display:'flex', alignItems:'center', gap:12, background:B.orangePale, borderRadius:8, padding:'10px 14px' }}>
+          <span style={{ fontSize:13, fontWeight:700, color:B.dark }}>🚫 {p.label}</span>
+          <span style={{ fontSize:13, color:B.gray }}>{p.from} → {p.to}</span>
+          <button onClick={()=>remove(i)} style={{ marginLeft:'auto', background:'none', border:'none', cursor:'pointer', color:B.red, fontSize:16 }}>×</button>
+        </div>
+      ))}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto', gap:8, marginTop:8 }}>
+        <div>
+          <label style={S.label}>From</label>
+          <input type="date" value={from} onChange={e=>setFrom(e.target.value)} style={S.input}/>
+        </div>
+        <div>
+          <label style={S.label}>To</label>
+          <input type="date" value={to} onChange={e=>setTo(e.target.value)} style={S.input}/>
+        </div>
+        <div>
+          <label style={S.label}>Label (optional)</label>
+          <input value={label} onChange={e=>setLabel(e.target.value)} placeholder="e.g. Winter break" style={S.input}/>
+        </div>
+        <div style={{ display:'flex', alignItems:'flex-end' }}>
+          <Btn onClick={add} disabled={!from||!to}>+ Add</Btn>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 // ─── Main Admin ───────────────────────────────────────────────────────────────
 
@@ -1530,6 +1615,8 @@ function AdminContent({ role }) {
   const [deleteModal,  setDeleteModal]  = useState(null)
   const [walkInModal,  setWalkInModal]  = useState(false)
   const [saving,       setSaving]       = useState(false)
+  const [deleted,      setDeleted]      = useState([])
+  const [showDeleted,  setShowDeleted]  = useState(false)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -1539,6 +1626,7 @@ function AdminContent({ role }) {
         getBreakfastReservations(), getSettings()
       ])
       setReservations(res||[]); setTables(tbl||[]); setWaitlist(wl||[])
+      const del = await getDeletedReservations(); setDeleted(del||[])
       setBreakfast(bfst||[]); setSettings(set||{})
     } catch(e) { console.error(e) }
     finally { setLoading(false) }
@@ -1647,9 +1735,42 @@ function AdminContent({ role }) {
               onEditReservation={r=>{setEditModal(r);setTab('reservations')}}
               onSeated={handleSeated} onEarlyFree={handleEarlyFree}
               onWalkIn={()=>setWalkInModal(true)} onRefresh={loadAll}/>}
-            {tab==='reservations' && <ReservationsList reservations={reservations} tables={tables}
-              onNew={()=>setNewModal(true)} onEdit={r=>setEditModal(r)} onDelete={r=>setDeleteModal(r)}
-              onSeated={handleSeated} onEarlyFree={handleEarlyFree}/>}
+            {tab==='reservations' && <>
+              <ReservationsList reservations={reservations} tables={tables}
+                onNew={()=>setNewModal(true)} onEdit={r=>setEditModal(r)} onDelete={r=>setDeleteModal(r)}
+                onSeated={handleSeated} onEarlyFree={handleEarlyFree}/>
+              {deleted.length > 0 && (
+                <div style={{ marginTop:24 }}>
+                  <button onClick={()=>setShowDeleted(v=>!v)} style={{ background:'none', border:`1px solid #E2E6E6`, borderRadius:8, padding:'8px 16px', fontSize:13, cursor:'pointer', color:'#8A8F8F' }}>
+                    🗑️ {showDeleted ? 'Hide' : 'Show'} deleted reservations ({deleted.length})
+                  </button>
+                  {showDeleted && (
+                    <div style={{ marginTop:12, border:'1px solid #E2E6E6', borderRadius:12, overflow:'auto' }}>
+                      <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                        <thead><tr style={{ background:'#FAF6F0' }}>
+                          {['Date','Time','Name','Guests','Email','Deleted at',''].map(h=><th key={h} style={{ padding:'10px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#8A8F8F', textTransform:'uppercase' }}>{h}</th>)}
+                        </tr></thead>
+                        <tbody>
+                          {deleted.map(r=>(
+                            <tr key={r.id} style={{ borderTop:'1px solid #E2E6E6' }}>
+                              <td style={{ padding:'10px 12px' }}>{r.date}</td>
+                              <td style={{ padding:'10px 12px' }}>{r.time?.slice(0,5)}</td>
+                              <td style={{ padding:'10px 12px' }}>{r.first_name} {r.last_name||''}</td>
+                              <td style={{ padding:'10px 12px' }}>{r.guests}</td>
+                              <td style={{ padding:'10px 12px', color:'#8A8F8F', fontSize:12 }}>{r.email}</td>
+                              <td style={{ padding:'10px 12px', color:'#8A8F8F', fontSize:12 }}>{new Date(r.deleted_at).toLocaleDateString('en-GB')}</td>
+                              <td style={{ padding:'10px 12px' }}>
+                                <button onClick={async()=>{ await restoreReservation(r.id); loadAll() }} style={{ background:'#D1FAE5', border:'none', borderRadius:6, padding:'4px 10px', fontSize:12, fontWeight:700, color:'#065F46', cursor:'pointer' }}>↩ Restore</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>}
             {tab==='waitlist'  && <WaitlistTab waitlist={waitlist} onRefresh={loadAll}/>}
             {tab==='breakfast' && <BreakfastTab breakfast={breakfast} settings={settings} onRefresh={loadAll}/>}
             {tab==='stats'     && <StatsTab reservations={reservations} breakfast={breakfast} settings={settings}/>}

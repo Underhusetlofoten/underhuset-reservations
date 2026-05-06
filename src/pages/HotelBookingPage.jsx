@@ -48,7 +48,7 @@ function Btn({ children, onClick, disabled, variant='primary', style={} }) {
   )
 }
 
-function CalendarStep({ selected, onSelect }) {
+function CalendarStep({ selected, onSelect, breakfastDays={}, closedPeriods=[] }) {
   const today = new Date()
   const [y, setY] = useState(today.getFullYear())
   const [m, setM] = useState(today.getMonth())
@@ -57,6 +57,15 @@ function CalendarStep({ selected, onSelect }) {
   const isPast = day => { const d=new Date(y,m,day);d.setHours(0,0,0,0);const t=new Date();t.setHours(0,0,0,0);return d<t }
   const isSel  = day => selected&&selected.getFullYear()===y&&selected.getMonth()===m&&selected.getDate()===day
   const isTod  = day => today.getFullYear()===y&&today.getMonth()===m&&today.getDate()===day
+  const dayKeys = ['mon','tue','wed','thu','fri','sat','sun']
+  const isBlocked = day => {
+    const d = new Date(y,m,day)
+    const dow = (d.getDay()+6)%7
+    const key = dayKeys[dow]
+    if (breakfastDays[key] === false) return true
+    const iso = `${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+    return closedPeriods.some(p => iso >= p.from && iso <= p.to)
+  }
 
   return (
     <div style={{ background:'#fff', borderRadius:16, padding:24, boxShadow:`0 2px 20px rgba(60,66,66,.08)` }}>
@@ -77,16 +86,17 @@ function CalendarStep({ selected, onSelect }) {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:3 }}>
         {Array(first).fill(null).map((_,i)=><div key={'e'+i}/>)}
         {Array(days).fill(null).map((_,i)=>{
-          const day=i+1, past=isPast(day), sel=isSel(day), tod=isTod(day)
+          const day=i+1, past=isPast(day), blocked=isBlocked(day), sel=isSel(day), tod=isTod(day)
+          const disabled = past||blocked
           return (
-            <button key={day} disabled={past} onClick={()=>onSelect(new Date(y,m,day))} style={{
+            <button key={day} disabled={disabled} onClick={()=>onSelect(new Date(y,m,day))} style={{
               aspectRatio:'1', border:'none', borderRadius:9,
               background:sel?B.orange:tod?B.orangeLight:'transparent',
-              color:sel?'#fff':past?B.grayLight:B.dark,
-              fontSize:14, fontWeight:sel||tod?700:400, cursor:past?'not-allowed':'pointer',
+              color:sel?'#fff':disabled?B.grayLight:B.dark,
+              fontSize:14, fontWeight:sel||tod?700:400, cursor:disabled?'not-allowed':'pointer',
               outline:tod&&!sel?`2px solid ${B.orange}`:'none',
             }}
-              onMouseEnter={e=>{ if(!past&&!sel) e.currentTarget.style.background=B.orangeLight }}
+              onMouseEnter={e=>{ if(!disabled&&!sel) e.currentTarget.style.background=B.orangeLight }}
               onMouseLeave={e=>{ if(!sel) e.currentTarget.style.background=tod?B.orangeLight:'transparent' }}>
               {day}
             </button>
@@ -133,6 +143,11 @@ export default function HotelBookingPage() {
     getBreakfastAvailability(toISO(date), parseInt(settings.breakfast_max_guests||44))
       .then(setAvail)
   }, [date, settings])
+
+  let breakfastDays = {}
+  let breakfastClosedPeriods = []
+  try { breakfastDays = JSON.parse(settings.breakfast_days||'{}') } catch {}
+  try { breakfastClosedPeriods = JSON.parse(settings.breakfast_closed_periods||'[]') } catch {}
 
   const maxGuests = parseInt(settings.breakfast_max_guests||44)
   const from = settings.breakfast_from || '08:00'
@@ -213,7 +228,7 @@ export default function HotelBookingPage() {
               <div>
                 <h2 style={{ textAlign:'center', fontSize:20, fontFamily:'Playfair Display,serif', color:B.dark, marginBottom:6, fontWeight:600 }}>Select date</h2>
                 <p style={{ textAlign:'center', color:B.gray, fontSize:13, marginBottom:20 }}>Choose the breakfast date</p>
-                <CalendarStep selected={date} onSelect={d=>{ setDate(d); setAvail(null) }} />
+                <CalendarStep selected={date} onSelect={d=>{ setDate(d); setAvail(null) }} breakfastDays={breakfastDays} closedPeriods={breakfastClosedPeriods} />
                 {date && avail !== null && (
                   <div style={{ marginTop:16, padding:12, borderRadius:10,
                     background:avail>0?B.greenLight:B.redLight,
