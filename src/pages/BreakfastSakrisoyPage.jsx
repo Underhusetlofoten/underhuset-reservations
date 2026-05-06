@@ -104,7 +104,7 @@ export default function HotelBookingPage() {
   const [avail,    setAvail]    = useState(null)
   const [settings, setSettings] = useState({})
   const [hotels,   setHotels]   = useState([])
-  const [form,     setForm]     = useState({ hotel:'', guests:1, contact_name:'', contact_email:'', contact_phone:'', notes:'' })
+  const [form,     setForm]     = useState({ hotel:'Sakrisøy Rorbuer', guests:1, contact_name:'', contact_email:'', contact_phone:'', notes:'' })
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState(null)
   const upd = (k,v) => setForm(f=>({...f,[k]:v}))
@@ -117,20 +117,15 @@ export default function HotelBookingPage() {
       .then(setAvail)
   }, [date, settings])
 
-  let breakfastDays = {}
-  let breakfastClosedPeriods = []
-  try { breakfastDays = JSON.parse(settings.breakfast_days||'{}') } catch {}
-  try { breakfastClosedPeriods = JSON.parse(settings.breakfast_closed_periods||'[]') } catch {}
-
   const maxGuests = parseInt(settings.breakfast_max_guests||44)
   const from = settings.breakfast_from || '08:00'
   const to   = settings.breakfast_to   || '11:00'
 
-  const partnerName = null
+  const partnerName = 'Sakrisøy Rorbuer'
 
   const canNext = () => {
     if (step===0) return !!date && avail > 0
-    if (step===1) return form.guests >= 1 && form.contact_name && form.contact_email
+    if (step===1) return form.hotel && form.guests >= 1 && form.contact_name && form.contact_email
     return true
   }
 
@@ -198,7 +193,7 @@ export default function HotelBookingPage() {
               <div>
                 <h2 style={{ textAlign:'center', fontSize:20, fontFamily:'Playfair Display,serif', color:B.dark, marginBottom:6, fontWeight:600 }}>Select date</h2>
                 <p style={{ textAlign:'center', color:B.gray, fontSize:13, marginBottom:20 }}>Choose the breakfast date</p>
-                <CalendarStep selected={date} onSelect={d=>{ setDate(d); setAvail(null) }} breakfastDays={breakfastDays} closedPeriods={breakfastClosedPeriods} />
+                <CalendarStep selected={date} onSelect={d=>{ setDate(d); setAvail(null) }} />
                 {date && avail !== null && (
                   <div style={{ marginTop:16, padding:12, borderRadius:10,
                     background:avail>0?B.greenLight:B.redLight,
@@ -218,11 +213,13 @@ export default function HotelBookingPage() {
                 <p style={{ textAlign:'center', color:B.gray, fontSize:13, marginBottom:20, textTransform:'capitalize' }}>{fmtDate(date)}</p>
                 <div style={{ display:'grid', gap:16 }}>
                   <div>
-                    <label style={labelStyle}>Where are you staying? (optional)</label>
-                    <input value={form.hotel} onChange={e=>upd('hotel',e.target.value)}
-                      placeholder="Hotel or accommodation name"
-                      style={inputStyle}
-                      onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
+                    <label style={labelStyle}>Property *</label>
+                    <select value={form.hotel} onChange={e=>upd('hotel',e.target.value)}
+                      style={{...inputStyle, cursor:'pointer', appearance:'auto'}}
+                      onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}>
+                      <option value="">Select property…</option>
+                      {hotels.map(h=><option key={h} value={h}>{h}</option>)}
+                    </select>
                   </div>
                   <div>
                     <label style={labelStyle}>Number of guests *</label>

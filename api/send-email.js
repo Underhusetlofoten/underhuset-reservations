@@ -49,7 +49,7 @@ function confirmationEmail(r) {
     ${r.notes ? `<div class="detail-row"><span class="detail-label">📝 Notes</span><span class="detail-value">${r.notes}</span></div>` : ''}
     <div class="notice">
       ⏱️ <strong>Please note:</strong> We have a <strong>15-minute grace period</strong>. If you have not arrived within 15 minutes of your booking time, your table may be released to other guests.<br><br>
-      Need to cancel? Please do so at least 24 hours in advance.
+      Need to cancel? You can do so up to 2 hours before your reservation using the link below.
     </div>
     <center><a href="${cancelUrl}" class="btn btn-red" style="margin-top:24px">Cancel reservation</a></center>
   `)

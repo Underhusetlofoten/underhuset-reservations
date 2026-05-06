@@ -5,6 +5,7 @@ import CancelPage           from './pages/CancelPage.jsx'
 import ConfirmWaitlistPage  from './pages/ConfirmWaitlistPage.jsx'
 import HotelBookingPage     from './pages/HotelBookingPage.jsx'
 import BreakfastPage        from './pages/BreakfastPage.jsx'
+import BreakfastSakrisoyPage from './pages/BreakfastSakrisoyPage.jsx'
 import { ADMIN_SECRET }     from './brand.js'
 
 export default function App() {
@@ -14,6 +15,7 @@ export default function App() {
       <Route path="/hotel"                    element={<HotelBookingPage />} />
       <Route path="/hotel/:partner"           element={<HotelBookingPage />} />
       <Route path="/breakfast"                   element={<BreakfastPage />} />
+      <Route path="/breakfast-sakrisoy"           element={<BreakfastSakrisoyPage />} />
       <Route path={`/${ADMIN_SECRET}`}        element={<AdminPage />} />
       <Route path="/cancel/:token"            element={<CancelPage />} />
       <Route path="/confirm-waitlist/:token"  element={<ConfirmWaitlistPage />} />
