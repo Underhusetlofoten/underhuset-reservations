@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 
 import { B, MONTHS_EN, DAYS_SHORT } from '../brand.js'
-import { supabase, getSettings } from '../lib/supabase.js'
+import { supabase, getSettings, sendEmail } from '../lib/supabase.js'
 
 function toISO(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
@@ -132,12 +132,21 @@ export default function HotelBookingPage() {
   const confirm = async () => {
     setLoading(true); setError(null)
     try {
-      await createBreakfastReservation({
+      const r = await createBreakfastReservation({
         date: toISO(date), guests: parseInt(form.guests),
         hotel: form.hotel, contact_name: form.contact_name,
         contact_email: form.contact_email, contact_phone: form.contact_phone,
         notes: form.notes, status: 'confirmed',
       })
+      if (form.contact_email) {
+        await sendEmail('breakfast_confirmation', { reservation: {
+          ...r, first_name: form.contact_name, last_name: '',
+          email: form.contact_email, date: toISO(date),
+          hotel: form.hotel || '',
+          from: settings.breakfast_from || '08:00',
+          to: settings.breakfast_to || '11:00',
+        }})
+      }
       setStep(3)
     } catch { setError('Something went wrong. Please try again.') }
     finally { setLoading(false) }

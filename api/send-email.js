@@ -115,6 +115,22 @@ function noShowEmail(r) {
   `)
 }
 
+function breakfastConfirmationEmail(r) {
+  return baseEmail(`
+    <h2 style="color:#3C4242;margin:0 0 8px">Breakfast Reservation Confirmed ✓</h2>
+    <p style="color:#8A8F8F;margin:0 0 24px;font-size:14px">We look forward to welcoming you for breakfast at Underhuset!</p>
+    <div class="detail-row"><span class="detail-label">📅 Date</span><span class="detail-value">${fmtDate(r.date)}</span></div>
+    <div class="detail-row"><span class="detail-label">🕗 Breakfast time</span><span class="detail-value">${r.from || '08:00'} – ${r.to || '11:00'}</span></div>
+    <div class="detail-row"><span class="detail-label">👥 Guests</span><span class="detail-value">${r.guests} ${r.guests===1?'guest':'guests'}</span></div>
+    <div class="detail-row"><span class="detail-label">👤 Name</span><span class="detail-value">${r.first_name}</span></div>
+    ${r.hotel ? `<div class="detail-row"><span class="detail-label">🏨 Property</span><span class="detail-value">${r.hotel}</span></div>` : ''}
+    ${r.notes ? `<div class="detail-row"><span class="detail-label">📝 Notes</span><span class="detail-value">${r.notes}</span></div>` : ''}
+    <div class="notice">
+      We look forward to seeing you! If you need to cancel, please let us know as soon as possible.
+    </div>
+  `)
+}
+
 async function sendResend(to, subject, html) {
   if (!API_KEY) return { ok: false, error: 'No API key' }
   const res = await fetch('https://api.resend.com/emails', {
@@ -152,6 +168,10 @@ export default async function handler(req, res) {
       result = await sendResend(entry.email,
         'A spot is available! — Restaurant Underhuset',
         waitlistSpotEmail(entry))
+    } else if (type === 'breakfast_confirmation') {
+      result = await sendResend(reservation.email,
+        'Breakfast reservation confirmed — Restaurant Underhuset',
+        breakfastConfirmationEmail(reservation))
     } else if (type === 'no_show') {
       result = await sendResend(reservation.email,
         'Reservation no-show — Restaurant Underhuset',
