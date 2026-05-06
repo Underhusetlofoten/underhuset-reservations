@@ -107,8 +107,9 @@ function CalendarStep({ selected, onSelect, breakfastDays={}, closedPeriods=[] }
   )
 }
 
-export default function HotelBookingPage() {
-  const { partner } = useParams() // 'ingrid' | 'marta' | undefined
+export default function HotelBookingPage(props) {
+  const { partner: partnerParam } = useParams()
+  const partner = props.partner || partnerParam // 'ingrid' | 'marta' | undefined
   const [step,     setStep]     = useState(0)
   const [date,     setDate]     = useState(null)
   const [avail,    setAvail]    = useState(null)

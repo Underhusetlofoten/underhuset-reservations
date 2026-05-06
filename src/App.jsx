@@ -14,6 +14,8 @@ export default function App() {
       <Route path="/"                         element={<BookingPage />} />
       <Route path="/hotel"                    element={<HotelBookingPage />} />
       <Route path="/hotel/:partner"           element={<HotelBookingPage />} />
+      <Route path="/ingrid"                       element={<HotelBookingPage partner="ingrid" />} />
+      <Route path="/marta"                        element={<HotelBookingPage partner="marta" />} />
       <Route path="/breakfast"                   element={<BreakfastPage />} />
       <Route path="/breakfast-sakrisoy"           element={<BreakfastSakrisoyPage />} />
       <Route path={`/${ADMIN_SECRET}`}        element={<AdminPage />} />
