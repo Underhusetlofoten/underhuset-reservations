@@ -1588,6 +1588,34 @@ function AdminContent({ role }) {
     return()=>clearInterval(id)
   },[loadAll, tab])
 
+  useEffect(()=>{
+    const autoComplete = async () => {
+      const now = new Date()
+      const seated = reservations.filter(r => r.status === 'seated' && r.seated_at)
+      for (const r of seated) {
+        const mins = (now - new Date(r.seated_at)) / 60000
+        if (mins >= 90) await updateReservation(r.id, { status: 'completed' })
+      }
+      if (seated.length > 0) loadAll()
+    }
+    const id = setInterval(autoComplete, 5 * 60 * 1000)
+    return () => clearInterval(id)
+  },[reservations, loadAll])
+
+  useEffect(()=>{
+    const autoCompleteBreakfast = async () => {
+      const now = new Date()
+      const seated = breakfast.filter(r => r.status === 'seated' && r.seated_at)
+      for (const r of seated) {
+        const mins = (now - new Date(r.seated_at)) / 60000
+        if (mins >= 40) await updateBreakfastReservation(r.id, { status: 'completed' })
+      }
+      if (seated.length > 0) loadAll()
+    }
+    const id = setInterval(autoCompleteBreakfast, 5 * 60 * 1000)
+    return () => clearInterval(id)
+  },[breakfast, loadAll])
+
   const handleCreate = async (f) => {
     setSaving(true)
     try {
