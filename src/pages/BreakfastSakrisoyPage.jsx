@@ -141,7 +141,7 @@ export default function HotelBookingPage() {
       if (form.contact_email) {
         await sendEmail('breakfast_confirmation', { reservation: {
           ...r, first_name: form.contact_name, last_name: '',
-          email: form.contact_email, date: toISO(date),
+          email: form.contact_email || r.contact_email, date: toISO(date),
           hotel: form.hotel || '',
           from: settings.breakfast_from || '08:00',
           to: settings.breakfast_to || '11:00',
