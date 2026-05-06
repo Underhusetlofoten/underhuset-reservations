@@ -140,7 +140,7 @@ export default function HotelBookingPage() {
 
   const canNext = () => {
     if (step===0) return !!date && avail > 0
-    if (step===1) return form.hotel && form.guests >= 1 && form.contact_name && form.contact_email
+    if (step===1) return form.guests >= 1 && form.contact_name && form.contact_email
     return true
   }
 
@@ -237,13 +237,7 @@ export default function HotelBookingPage() {
                 <p style={{ textAlign:'center', color:B.gray, fontSize:13, marginBottom:20, textTransform:'capitalize' }}>{fmtDate(date)}</p>
                 <div style={{ display:'grid', gap:16 }}>
                   <div>
-                    <label style={labelStyle}>Property *</label>
-                    <select value={form.hotel} onChange={e=>upd('hotel',e.target.value)}
-                      style={{...inputStyle, cursor:'pointer', appearance:'auto'}}
-                      onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}>
-                      <option value="">Select property…</option>
-                      {hotels.map(h=><option key={h} value={h}>{h}</option>)}
-                    </select>
+
                   </div>
                   <div>
                     <label style={labelStyle}>Number of guests *</label>
