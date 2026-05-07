@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { B, STATUS_COLOR, ALL_TIMES, MONTHS_EN, DAYS_SHORT, DAY_KEYS, DAY_NAMES, BLOCK_HOURS } from '../brand.js'
 import StatsTab from './StatsTab.jsx'
@@ -530,8 +530,8 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
   const [dragging, setDragging] = useState(null)
   const [dragOverTable, setDragOverTable] = useState(null)
   const [dragPos, setDragPos] = useState({ x:0, y:0 })
-  const containerRef = React.useRef(null)
-  const rowRefs = React.useRef({})
+  const containerRef = useRef(null)
+  const rowRefs = useRef({})
 
   const TL_S = 11.5, TL_E = 22.5, TL_R = TL_E - TL_S
   const ROW_H = 68
