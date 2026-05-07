@@ -1905,8 +1905,8 @@ function AdminContent({ role }) {
   const [deleted,      setDeleted]      = useState([])
   const [showDeleted,  setShowDeleted]  = useState(false)
 
-  const loadAll = useCallback(async () => {
-    setLoading(true)
+  const loadAll = useCallback(async (silent=false) => {
+    if (!silent) setLoading(true)
     try {
       const [res, tbl, wl, bfst, set] = await Promise.all([
         getReservations(), getTables(), getWaitlist(),
@@ -1921,7 +1921,7 @@ function AdminContent({ role }) {
 
   useEffect(()=>{ loadAll() },[loadAll])
   useEffect(()=>{
-    const id=setInterval(()=>{ if(['dashboard','reservations','waitlist'].includes(tab)) loadAll() },30_000)
+    const id=setInterval(()=>{ if(['dashboard','reservations','waitlist'].includes(tab)) loadAll(true) },30_000)
     return()=>clearInterval(id)
   },[loadAll, tab])
 
