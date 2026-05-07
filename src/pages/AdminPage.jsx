@@ -524,73 +524,159 @@ function Timeline({ reservations, onEdit }) {
 
 // ─── Tab: Dashboard ───────────────────────────────────────────────────────────
 
-function TableMapView({ todayRes, tables, onEditReservation, onRefresh }) {
+
+function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
   const [dragging, setDragging] = useState(null)
+  const [dragOverTable, setDragOverTable] = useState(null)
+
+  const TL_S = 11.5, TL_E = 22.5, TL_R = TL_E - TL_S
+  const ROW_H = 64
+  const BLOCK_H = 1.5
+
   const interiorTables = tables.filter(t=>t.zone==='interior'&&t.is_active).sort((a,b)=>Number(a.name)-Number(b.name))
   const exteriorTables = tables.filter(t=>t.zone==='exterior'&&t.is_active).sort((a,b)=>Number(a.name)-Number(b.name))
+  const allTables = [...interiorTables, ...exteriorTables]
 
-  const getTableReservations = (tableId) =>
-    todayRes.filter(r => r.table_id === tableId || (r.table_ids && r.table_ids.includes(tableId)))
+  const activeRes = todayRes.filter(r=>!['no_show','cancelled','completed'].includes(r.status))
 
-  const handleDrop = async (tableId) => {
-    if (!dragging) return
-    const { updateReservation } = await import('../lib/supabase.js')
-    await updateReservation(dragging.id, { table_id: tableId })
-    onRefresh()
-    setDragging(null)
+  const getResForTable = (tableId) => activeRes.filter(r => r.table_id === tableId)
+
+  const timeToH = t => { const [h,m] = t.split(':').map(Number); return h + m/60 }
+  const pct = h => Math.max(0, Math.min(100, (h - TL_S) / TL_R * 100))
+
+  const hours = []
+  for (let h = TL_S; h <= TL_E; h += 1) hours.push(h)
+
+  const statusColor = {
+    pending:   { bg:'#FEF3C7', border:'#F59E0B', text:'#92400E' },
+    confirmed: { bg:'#D1FAE5', border:'#10B981', text:'#065F46' },
+    seated:    { bg:'#DBEAFE', border:'#3B82F6', text:'#1E3A8A' },
+    early_free:{ bg:'#EDE9FE', border:'#7C3AED', text:'#4C1D95' },
   }
 
-  const TableCard = ({ table }) => {
-    const resos = getTableReservations(table.id)
-    const isOccupied = resos.some(r => r.status === 'seated')
-    const hasConfirmed = resos.some(r => r.status === 'confirmed')
-    const bg = isOccupied ? '#DBEAFE' : hasConfirmed ? '#D1FAE5' : '#F3F4F6'
-    const border = isOccupied ? '#3B82F6' : hasConfirmed ? '#10B981' : '#E5E7EB'
+  const handleDrop = async (tableId) => {
+    if (!dragging || dragging.table_id === tableId) { setDragging(null); setDragOverTable(null); return }
+    
+    // Check if target table has a conflicting reservation to swap
+    const dRes = getResForTable(tableId)
+    const dTime = timeToH(dragging.time)
+    const conflict = dRes.find(r => {
+      const rTime = timeToH(r.time)
+      return Math.abs(rTime - dTime) < BLOCK_H
+    })
+    
+    if (conflict) {
+      // Swap tables
+      await updateReservation(dragging.id, { table_id: tableId })
+      await updateReservation(conflict.id, { table_id: dragging.table_id })
+    } else {
+      await updateReservation(dragging.id, { table_id: tableId })
+    }
+    onRefresh()
+    setDragging(null)
+    setDragOverTable(null)
+  }
+
+  const TableRow = ({ table, isFirst, zone }) => {
+    const resos = getResForTable(table.id)
+    const isOver = dragOverTable === table.id
+    const isBlocked = table.is_blocked
 
     return (
       <div
-        onDragOver={e=>e.preventDefault()}
+        onDragOver={e=>{ e.preventDefault(); setDragOverTable(table.id) }}
+        onDragLeave={()=>setDragOverTable(null)}
         onDrop={()=>handleDrop(table.id)}
-        style={{ background:bg, border:`2px solid ${border}`, borderRadius:12, padding:12, minHeight:100, position:'relative' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-          <span style={{ fontWeight:700, fontSize:15, color:B.dark }}>#{table.name}</span>
-          <span style={{ fontSize:11, color:B.gray }}>👥{table.capacity}</span>
+        style={{
+          display:'flex', height:ROW_H, borderBottom:`1px solid ${B.grayLight}`,
+          background: isOver ? B.orangePale : isBlocked ? '#FAFAFA' : '#fff',
+          transition:'background .15s',
+          position:'relative',
+        }}>
+        {/* Table label */}
+        <div style={{ width:72, minWidth:72, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRight:`1px solid ${B.grayLight}`, background:'#FAFAFA', gap:2 }}>
+          <span style={{ fontWeight:700, fontSize:14, color:B.dark }}>#{table.name}</span>
+          <span style={{ fontSize:10, color:B.gray }}>👥{table.capacity}</span>
+          {isBlocked && <span style={{ fontSize:9, color:B.gray, background:'#F3F4F6', borderRadius:4, padding:'1px 4px' }}>staff</span>}
         </div>
-        {resos.length === 0 && <div style={{ fontSize:12, color:B.gray, textAlign:'center', marginTop:16 }}>Free</div>}
-        {resos.map(r=>(
-          <div key={r.id}
-            draggable
-            onDragStart={()=>setDragging(r)}
-            onClick={()=>onEditReservation(r)}
-            style={{ background:'#fff', borderRadius:8, padding:'6px 8px', marginBottom:6, cursor:'grab', boxShadow:'0 1px 4px rgba(0,0,0,.1)', fontSize:12 }}>
-            <div style={{ fontWeight:700, color:B.dark }}>{r.first_name} {r.last_name||''}</div>
-            <div style={{ color:B.gray, fontSize:11 }}>{fmtTime(r.time)} · {r.guests}p</div>
-            <div style={{ marginTop:4 }}>
-              <Badge status={r.status}/>
-            </div>
-          </div>
-        ))}
+        {/* Grid lines */}
+        <div style={{ flex:1, position:'relative', overflow:'hidden' }}>
+          {hours.map(h=>(
+            <div key={h} style={{ position:'absolute', left:`${pct(h)}%`, top:0, bottom:0, width:1, background:'#F3F4F6' }}/>
+          ))}
+          {/* Reservation blocks */}
+          {resos.map(r=>{
+            const h = timeToH(r.time)
+            const left = pct(h)
+            const width = Math.min(100-left, BLOCK_H/TL_R*100)
+            const c = statusColor[r.status] || statusColor.confirmed
+            const isDragging = dragging?.id === r.id
+            return (
+              <div key={r.id}
+                draggable
+                onDragStart={()=>setDragging(r)}
+                onDragEnd={()=>{ setDragging(null); setDragOverTable(null) }}
+                onClick={()=>onEditReservation(r)}
+                title={`${r.first_name} ${r.last_name||''} · ${fmtTime(r.time)} · ${r.guests}p`}
+                style={{
+                  position:'absolute',
+                  left:`${left}%`, width:`${width}%`,
+                  top:6, bottom:6,
+                  background:c.bg, border:`2px solid ${c.border}`,
+                  borderRadius:8, padding:'3px 6px',
+                  cursor:'grab', overflow:'hidden',
+                  opacity: isDragging ? 0.4 : 1,
+                  transition:'opacity .15s',
+                  zIndex:2,
+                  display:'flex', flexDirection:'column', justifyContent:'center',
+                }}>
+                <div style={{ fontSize:11, fontWeight:700, color:c.text, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r.first_name} {r.last_name||''}</div>
+                <div style={{ fontSize:10, color:c.text, opacity:0.8 }}>{fmtTime(r.time)} · {r.guests}p</div>
+              </div>
+            )
+          })}
+        </div>
       </div>
     )
   }
 
   return (
-    <div>
-      <div style={{ marginBottom:16 }}>
-        <div style={{ fontSize:13, fontWeight:700, color:B.gray, marginBottom:8, textTransform:'uppercase', letterSpacing:'.05em' }}>🏠 Interior</div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))', gap:10 }}>
-          {interiorTables.map(t=><TableCard key={t.id} table={t}/>)}
+    <div style={{ ...S.card, padding:0, overflow:'auto', userSelect:'none' }}>
+      {/* Header - time axis */}
+      <div style={{ display:'flex', borderBottom:`2px solid ${B.grayLight}`, background:'#FAFAFA', position:'sticky', top:0, zIndex:10 }}>
+        <div style={{ width:72, minWidth:72, borderRight:`1px solid ${B.grayLight}`, padding:'8px 0', textAlign:'center', fontSize:11, fontWeight:700, color:B.gray }}>TABLE</div>
+        <div style={{ flex:1, position:'relative', height:36 }}>
+          {hours.map(h=>{
+            const hr = Math.floor(h)
+            return (
+              <div key={h} style={{ position:'absolute', left:`${pct(h)}%`, top:0, bottom:0, display:'flex', flexDirection:'column', alignItems:'flex-start' }}>
+                <div style={{ width:1, height:8, background:B.grayLight }}/>
+                <span style={{ fontSize:10, fontWeight:700, color:B.gray, marginLeft:2 }}>{String(hr).padStart(2,'0')}:00</span>
+              </div>
+            )
+          })}
         </div>
       </div>
+
+      {/* Interior section */}
+      <div style={{ borderBottom:`2px solid ${B.orange}` }}>
+        <div style={{ padding:'4px 8px', background:B.orangePale, fontSize:11, fontWeight:700, color:B.orange, textTransform:'uppercase', letterSpacing:'.05em' }}>🏠 Interior</div>
+        {interiorTables.map(t=><TableRow key={t.id} table={t}/>)}
+      </div>
+
+      {/* Exterior section */}
       <div>
-        <div style={{ fontSize:13, fontWeight:700, color:B.gray, marginBottom:8, textTransform:'uppercase', letterSpacing:'.05em' }}>🌿 Exterior</div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))', gap:10 }}>
-          {exteriorTables.map(t=><TableCard key={t.id} table={t}/>)}
-        </div>
+        <div style={{ padding:'4px 8px', background:'#F0FDF4', fontSize:11, fontWeight:700, color:'#16A34A', textTransform:'uppercase', letterSpacing:'.05em' }}>🌿 Exterior</div>
+        {exteriorTables.map(t=><TableRow key={t.id} table={t}/>)}
+      </div>
+
+      <div style={{ padding:'8px 12px', fontSize:11, color:B.gray, borderTop:`1px solid ${B.grayLight}` }}>
+        💡 Drag a reservation to a different table row to move it. If the target table is occupied, they will swap.
       </div>
     </div>
   )
 }
+
 
 function Dashboard({ reservations, tables, onEditReservation, onSeated, onEarlyFree, onWalkIn, onRefresh }) {
   const today     = todayISO()
@@ -600,7 +686,6 @@ function Dashboard({ reservations, tables, onEditReservation, onSeated, onEarlyF
   const seated    = todayRes.filter(r=>r.status==='seated').length
   const totalGuests = todayRes.reduce((s,r)=>s+r.guests,0)
   const activeTables = tables.filter(t=>t.is_active&&!t.is_blocked).length
-  const [view, setView] = useState('timeline')
 
   // Auto no-show: check every 60s
   useEffect(() => {
@@ -645,11 +730,7 @@ function Dashboard({ reservations, tables, onEditReservation, onSeated, onEarlyF
         <h2 style={{ fontFamily:'Playfair Display,serif', fontSize:22, color:B.dark, fontWeight:600 }}>
           Today — {new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}
         </h2>
-        <div style={{ display:'flex', gap:8 }}>
-          <Btn size="sm" variant={view==='timeline'?'primary':'secondary'} onClick={()=>setView('timeline')}>⏱ Timeline</Btn>
-          <Btn size="sm" variant={view==='map'?'primary':'secondary'} onClick={()=>setView('map')}>🗺 Table map</Btn>
-          <Btn variant="walkin" onClick={onWalkIn}>🚶 Walk-in</Btn>
-        </div>
+        <Btn variant="walkin" onClick={onWalkIn}>🚶 Walk-in</Btn>
       </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))', gap:12, marginBottom:28 }}>
@@ -661,7 +742,7 @@ function Dashboard({ reservations, tables, onEditReservation, onSeated, onEarlyF
         <Stat icon="🍽️"  value={activeTables}    label="Active tables" />
       </div>
 
-      {view==='map' ? <TableMapView todayRes={todayRes} tables={tables} onEditReservation={onEditReservation} onRefresh={onRefresh}/> : <Timeline reservations={todayRes} onEdit={r=>{onEditReservation(r)}} />}
+      <DiagramView todayRes={todayRes} tables={tables} onEditReservation={onEditReservation} onRefresh={onRefresh}/>
 
       {[['☀️ Lunch', lunch], ['🌙 Dinner', dinner]].map(([label, list]) => list.length > 0 && (
         <div key={label} style={{ marginBottom:24 }}>
