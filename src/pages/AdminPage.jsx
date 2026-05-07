@@ -1886,7 +1886,7 @@ function AdminContent({ role }) {
         {loading ? <div style={{ textAlign:'center', padding:80, color:B.gray }}>Loading…</div> : (
           <>
             {tab==='dashboard'    && <Dashboard reservations={reservations} tables={tables}
-              onEditReservation={r=>{setEditModal(r);setTab('reservations')}}
+              onEditReservation={r=>setEditModal(r)}
               onSeated={handleSeated} onEarlyFree={handleEarlyFree}
               onWalkIn={()=>setWalkInModal(true)} onRefresh={loadAll}/>}
             {tab==='reservations' && <>
