@@ -589,7 +589,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
   const doMerge = async () => {
     if (!mergePrompt) return
     const { source, conflict, targetTableId } = mergePrompt
-    await updateReservation(source.id, { table_id: targetTableId, merged_with: `${conflict.first_name} ${conflict.last_name||''}`.trim() })
+    await updateReservation(source.id, { table_id: targetTableId, is_absorbed: true })
     await updateReservation(conflict.id, { merged_with: `${source.first_name} ${source.last_name||''}`.trim() })
     setMergePrompt(null)
     setDragging(null)
@@ -989,6 +989,7 @@ function ReservationsList({ reservations, tables, onNew, onEdit, onDelete, onSea
                 <td style={S.td}>
                   <div style={{ fontWeight:600 }}>{r.first_name} {r.last_name}</div>
                   <div style={{ fontSize:11, color:B.gray }}>{r.email}</div>
+                  {r.merged_with && <div style={{ fontSize:11, color:'#7C3AED', fontWeight:700 }}>🔗 +{r.merged_with}</div>}
                 </td>
                 <td style={S.td}>👥 {r.guests}</td>
                 <td style={S.td}><TableCell r={r} tables={tables}/></td>
