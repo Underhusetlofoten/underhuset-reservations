@@ -876,6 +876,10 @@ function ReservationsList({ reservations, tables, onNew, onEdit, onDelete, onSea
   const [dateFilter,   setDateFilter]   = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [search,       setSearch]       = useState('')
+  const [view,         setView]         = useState('list')
+  const today = new Date()
+  const [calY, setCalY] = useState(today.getFullYear())
+  const [calM, setCalM] = useState(today.getMonth())
 
   const filtered = reservations.filter(r => {
     if (dateFilter   && r.date!==dateFilter) return false
@@ -945,11 +949,47 @@ function ReservationsList({ reservations, tables, onNew, onEdit, onDelete, onSea
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
         <h2 style={{ fontFamily:'Playfair Display,serif', fontSize:22, color:B.dark, fontWeight:600 }}>Reservations</h2>
         <div style={{ display:'flex', gap:8 }}>
+          <Btn size="sm" variant={view==='list'?'primary':'secondary'} onClick={()=>setView('list')}>☰ List</Btn>
+          <Btn size="sm" variant={view==='month'?'primary':'secondary'} onClick={()=>setView('month')}>📅 Month</Btn>
           <Btn size="sm" variant="secondary" onClick={exportExcel}>📊 Excel</Btn>
           <Btn size="sm" variant="secondary" onClick={exportPDF}>📄 PDF</Btn>
           <Btn onClick={onNew}>+ New manual reservation</Btn>
         </div>
       </div>
+      {view === 'month' && (
+        <div style={{ ...S.card, marginBottom:20 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+            <button onClick={()=>calM===0?(setCalY(calY-1),setCalM(11)):setCalM(calM-1)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:B.dark, padding:'2px 10px' }}>‹</button>
+            <span style={{ fontFamily:'Playfair Display,serif', fontSize:18, fontWeight:600, color:B.dark }}>{MONTHS_EN[calM]} {calY}</span>
+            <button onClick={()=>calM===11?(setCalY(calY+1),setCalM(0)):setCalM(calM+1)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:B.dark, padding:'2px 10px' }}>›</button>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, marginBottom:4 }}>
+            {['Mo','Tu','We','Th','Fr','Sa','Su'].map(d=><div key={d} style={{ textAlign:'center', fontSize:10, fontWeight:700, color:B.gray, padding:'4px 0' }}>{d}</div>)}
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2 }}>
+            {Array((new Date(calY,calM,1).getDay()+6)%7).fill(null).map((_,i)=><div key={'e'+i}/>)}
+            {Array(new Date(calY,calM+1,0).getDate()).fill(null).map((_,i)=>{
+              const day = i+1
+              const iso = `${calY}-${String(calM+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+              const dayRes = reservations.filter(r=>r.date===iso&&r.status!=='cancelled')
+              const guests = dayRes.reduce((s,r)=>s+r.guests,0)
+              const isToday = iso===todayISO()
+              const isSelected = dateFilter===iso
+              return (
+                <div key={day} onClick={()=>{ setDateFilter(isSelected?'':iso); setView('list') }}
+                  style={{ borderRadius:8, padding:'6px 4px', textAlign:'center', cursor:'pointer', minHeight:52,
+                    background: isSelected?B.orange : isToday?B.orangeLight : dayRes.length>0?'#F0FDF4':'#FAFAFA',
+                    border: `1px solid ${isSelected?B.orange:isToday?B.orange:'#E5E7EB'}` }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:isSelected?'#fff':B.dark }}>{day}</div>
+                  {dayRes.length>0 && <div style={{ fontSize:10, color:isSelected?'#fff':'#16A34A', fontWeight:600 }}>{dayRes.length}r</div>}
+                  {guests>0 && <div style={{ fontSize:9, color:isSelected?'rgba(255,255,255,.8)':B.gray }}>{guests}p</div>}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       <div style={{ display:'grid', gridTemplateColumns:'auto auto auto 1fr', gap:12, marginBottom:20, alignItems:'end' }}>
         <div>
           <label style={S.label}>Date</label>
