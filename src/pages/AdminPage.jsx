@@ -530,6 +530,8 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
   const [dragging, setDragging] = useState(null)
   const [dragOverTable, setDragOverTable] = useState(null)
   const [dragPos, setDragPos] = useState({ x:0, y:0 })
+  const hasMoved = useRef(false)
+  const startPos = useRef({ x:0, y:0 })
   const containerRef = useRef(null)
   const rowRefs = useRef({})
 
@@ -579,12 +581,18 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
 
   const onPointerDown = (e, r) => {
     e.preventDefault()
+    hasMoved.current = false
+    startPos.current = { x: e.clientX, y: e.clientY }
     setDragging(r)
     setDragPos({ x: e.clientX, y: e.clientY })
   }
 
   const onPointerMove = (e) => {
     if (!dragging) return
+    const dx = Math.abs(e.clientX - startPos.current.x)
+    const dy = Math.abs(e.clientY - startPos.current.y)
+    if (dx > 8 || dy > 8) hasMoved.current = true
+    if (!hasMoved.current) return
     setDragPos({ x: e.clientX, y: e.clientY })
     // Find which table row we're over
     for (const [tableId, el] of Object.entries(rowRefs.current)) {
@@ -598,7 +606,13 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
     setDragOverTable(null)
   }
 
-  const onPointerUp = async () => {
+  const onPointerUp = async (e) => {
+    if (!hasMoved.current && dragging) {
+      onEditReservation(dragging)
+      setDragging(null)
+      setDragOverTable(null)
+      return
+    }
     if (dragging && dragOverTable && dragOverTable !== dragging.table_id) {
       await doSwap(dragOverTable)
     }
@@ -633,7 +647,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
             return (
               <div key={r.id}
                 onPointerDown={e=>onPointerDown(e,r)}
-                onClick={()=>{ if(!isDragging) onEditReservation(r) }}
+
                 style={{
                   position:'absolute', left:`${left}%`, width:`calc(${width}% - 4px)`,
                   top:6, bottom:6, background:c.bg, border:`2px solid ${c.border}`,
