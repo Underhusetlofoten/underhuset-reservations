@@ -524,6 +524,74 @@ function Timeline({ reservations, onEdit }) {
 
 // ─── Tab: Dashboard ───────────────────────────────────────────────────────────
 
+function TableMapView({ todayRes, tables, onEditReservation, onRefresh }) {
+  const [dragging, setDragging] = useState(null)
+  const interiorTables = tables.filter(t=>t.zone==='interior'&&t.is_active).sort((a,b)=>Number(a.name)-Number(b.name))
+  const exteriorTables = tables.filter(t=>t.zone==='exterior'&&t.is_active).sort((a,b)=>Number(a.name)-Number(b.name))
+
+  const getTableReservations = (tableId) =>
+    todayRes.filter(r => r.table_id === tableId || (r.table_ids && r.table_ids.includes(tableId)))
+
+  const handleDrop = async (tableId) => {
+    if (!dragging) return
+    const { updateReservation } = await import('../lib/supabase.js')
+    await updateReservation(dragging.id, { table_id: tableId })
+    onRefresh()
+    setDragging(null)
+  }
+
+  const TableCard = ({ table }) => {
+    const resos = getTableReservations(table.id)
+    const isOccupied = resos.some(r => r.status === 'seated')
+    const hasConfirmed = resos.some(r => r.status === 'confirmed')
+    const bg = isOccupied ? '#DBEAFE' : hasConfirmed ? '#D1FAE5' : '#F3F4F6'
+    const border = isOccupied ? '#3B82F6' : hasConfirmed ? '#10B981' : '#E5E7EB'
+
+    return (
+      <div
+        onDragOver={e=>e.preventDefault()}
+        onDrop={()=>handleDrop(table.id)}
+        style={{ background:bg, border:`2px solid ${border}`, borderRadius:12, padding:12, minHeight:100, position:'relative' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+          <span style={{ fontWeight:700, fontSize:15, color:B.dark }}>#{table.name}</span>
+          <span style={{ fontSize:11, color:B.gray }}>👥{table.capacity}</span>
+        </div>
+        {resos.length === 0 && <div style={{ fontSize:12, color:B.gray, textAlign:'center', marginTop:16 }}>Free</div>}
+        {resos.map(r=>(
+          <div key={r.id}
+            draggable
+            onDragStart={()=>setDragging(r)}
+            onClick={()=>onEditReservation(r)}
+            style={{ background:'#fff', borderRadius:8, padding:'6px 8px', marginBottom:6, cursor:'grab', boxShadow:'0 1px 4px rgba(0,0,0,.1)', fontSize:12 }}>
+            <div style={{ fontWeight:700, color:B.dark }}>{r.first_name} {r.last_name||''}</div>
+            <div style={{ color:B.gray, fontSize:11 }}>{fmtTime(r.time)} · {r.guests}p</div>
+            <div style={{ marginTop:4 }}>
+              <Badge status={r.status}/>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom:16 }}>
+        <div style={{ fontSize:13, fontWeight:700, color:B.gray, marginBottom:8, textTransform:'uppercase', letterSpacing:'.05em' }}>🏠 Interior</div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))', gap:10 }}>
+          {interiorTables.map(t=><TableCard key={t.id} table={t}/>)}
+        </div>
+      </div>
+      <div>
+        <div style={{ fontSize:13, fontWeight:700, color:B.gray, marginBottom:8, textTransform:'uppercase', letterSpacing:'.05em' }}>🌿 Exterior</div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))', gap:10 }}>
+          {exteriorTables.map(t=><TableCard key={t.id} table={t}/>)}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Dashboard({ reservations, tables, onEditReservation, onSeated, onEarlyFree, onWalkIn, onRefresh }) {
   const today     = todayISO()
   const todayRes  = reservations.filter(r=>r.date===today&&r.status!=='cancelled')
@@ -532,6 +600,7 @@ function Dashboard({ reservations, tables, onEditReservation, onSeated, onEarlyF
   const seated    = todayRes.filter(r=>r.status==='seated').length
   const totalGuests = todayRes.reduce((s,r)=>s+r.guests,0)
   const activeTables = tables.filter(t=>t.is_active&&!t.is_blocked).length
+  const [view, setView] = useState('timeline')
 
   // Auto no-show: check every 60s
   useEffect(() => {
@@ -576,7 +645,11 @@ function Dashboard({ reservations, tables, onEditReservation, onSeated, onEarlyF
         <h2 style={{ fontFamily:'Playfair Display,serif', fontSize:22, color:B.dark, fontWeight:600 }}>
           Today — {new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}
         </h2>
-        <Btn variant="walkin" onClick={onWalkIn}>🚶 Walk-in</Btn>
+        <div style={{ display:'flex', gap:8 }}>
+          <Btn size="sm" variant={view==='timeline'?'primary':'secondary'} onClick={()=>setView('timeline')}>⏱ Timeline</Btn>
+          <Btn size="sm" variant={view==='map'?'primary':'secondary'} onClick={()=>setView('map')}>🗺 Table map</Btn>
+          <Btn variant="walkin" onClick={onWalkIn}>🚶 Walk-in</Btn>
+        </div>
       </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))', gap:12, marginBottom:28 }}>
@@ -588,7 +661,7 @@ function Dashboard({ reservations, tables, onEditReservation, onSeated, onEarlyF
         <Stat icon="🍽️"  value={activeTables}    label="Active tables" />
       </div>
 
-      <Timeline reservations={todayRes} onEdit={r=>{onEditReservation(r)}} />
+      {view==='map' ? <TableMapView todayRes={todayRes} tables={tables} onEditReservation={onEditReservation} onRefresh={onRefresh}/> : <Timeline reservations={todayRes} onEdit={r=>{onEditReservation(r)}} />}
 
       {[['☀️ Lunch', lunch], ['🌙 Dinner', dinner]].map(([label, list]) => list.length > 0 && (
         <div key={label} style={{ marginBottom:24 }}>
