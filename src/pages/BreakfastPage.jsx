@@ -237,7 +237,7 @@ export default function HotelBookingPage() {
                 <p style={{ textAlign:'center', color:B.gray, fontSize:13, marginBottom:20, textTransform:'capitalize' }}>{fmtDate(date)}</p>
                 <div style={{ display:'grid', gap:16 }}>
                   <div>
-                    <label style={labelStyle}>Where are you staying? (optional)</label>
+                    <label style={labelStyle}>Where are you staying?</label>
                     <input value={form.hotel} onChange={e=>upd('hotel',e.target.value)}
                       placeholder="Hotel or accommodation name"
                       style={inputStyle}
