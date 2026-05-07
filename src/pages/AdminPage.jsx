@@ -844,7 +844,10 @@ function Dashboard({ reservations, tables, onEditReservation, onSeated, onEarlyF
                   <tr key={r.id} onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
                     onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                     <td style={{...S.td, fontWeight:700}}>{fmtTime(r.time)}</td>
-                    <td style={S.td}>{r.first_name} {r.last_name}</td>
+                    <td style={S.td}>
+                      <div style={{ fontWeight:600 }}>{r.first_name} {r.last_name}</div>
+                      {r.merged_with && <div style={{ fontSize:11, color:'#7C3AED', fontWeight:700 }}>🔗 +{r.merged_with}</div>}
+                    </td>
                     <td style={S.td}>👥 {r.guests}</td>
                     <td style={S.td}><TableCell r={r} tables={tables}/></td>
                     <td style={S.td}><Badge status={r.status}/></td>
