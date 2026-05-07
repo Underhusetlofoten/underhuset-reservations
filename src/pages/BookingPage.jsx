@@ -620,7 +620,7 @@ function PageWrapper({ children, breakfastLink='/breakfast' }) {
           <div style={{ fontSize:11, color:'rgba(255,255,255,.6)', letterSpacing:'.1em', textTransform:'uppercase', marginTop:8 }}>Sakrisøy</div>
         </div>
         <div style={{ width:'100%', maxWidth:520, textAlign:'center', marginBottom:12 }}>
-          <a href={breakfastLink} style={{ display:'inline-block', padding:'10px 24px', borderRadius:20, background:'rgba(255,255,255,0.15)', color:'#FAF6F0', fontSize:14, fontWeight:600, textDecoration:'none', border:'1px solid rgba(255,255,255,0.3)', backdropFilter:'blur(4px)' }}>
+          <a href={breakfastLink} style={{ display:'inline-block', padding:'14px 36px', borderRadius:20, background:'rgba(255,255,255,0.2)', color:'#FAF6F0', fontSize:18, fontWeight:700, textDecoration:'none', border:'2px solid rgba(255,255,255,0.4)', backdropFilter:'blur(4px)' }}>
             🍳 Breakfast?
           </a>
         </div>
