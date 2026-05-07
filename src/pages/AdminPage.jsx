@@ -530,6 +530,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
   const [dragging, setDragging] = useState(null)
   const [dragOverTable, setDragOverTable] = useState(null)
   const [dragPos, setDragPos] = useState({ x:0, y:0 })
+  const [mergePrompt, setMergePrompt] = useState(null)
   const hasMoved = useRef(false)
   const startPos = useRef({ x:0, y:0 })
   const containerRef = useRef(null)
@@ -571,11 +572,32 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
     const dTime = timeToH(dragging.time)
     const conflict = dRes.find(r => Math.abs(timeToH(r.time) - dTime) < BLOCK_H)
     if (conflict) {
-      await updateReservation(dragging.id, { table_id: targetTableId })
-      await updateReservation(conflict.id, { table_id: dragging.table_id })
+      setMergePrompt({ source: dragging, conflict, targetTableId })
     } else {
       await updateReservation(dragging.id, { table_id: targetTableId })
+      onRefresh()
     }
+  }
+
+  const doMerge = async () => {
+    if (!mergePrompt) return
+    const { source, conflict, targetTableId } = mergePrompt
+    await updateReservation(source.id, { table_id: targetTableId, merged_with: `${conflict.first_name} ${conflict.last_name||''}`.trim() })
+    await updateReservation(conflict.id, { merged_with: `${source.first_name} ${source.last_name||''}`.trim() })
+    setMergePrompt(null)
+    setDragging(null)
+    setDragOverTable(null)
+    onRefresh()
+  }
+
+  const doSwapConfirm = async () => {
+    if (!mergePrompt) return
+    const { source, conflict, targetTableId } = mergePrompt
+    await updateReservation(source.id, { table_id: targetTableId })
+    await updateReservation(conflict.id, { table_id: source.table_id })
+    setMergePrompt(null)
+    setDragging(null)
+    setDragOverTable(null)
     onRefresh()
   }
 
@@ -657,6 +679,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
                 }}>
                 <div style={{ fontSize:11, fontWeight:700, color:c.text, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r.first_name} {r.last_name||''}</div>
                 <div style={{ fontSize:10, color:c.text, opacity:0.8 }}>{fmtTime(r.time)} · {r.guests}p</div>
+                {r.merged_with && <div style={{ fontSize:9, color:c.text, opacity:0.7, fontStyle:'italic' }}>🔗 +{r.merged_with}</div>}
               </div>
             )
           })}
@@ -667,6 +690,27 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
 
   return (
     <div onPointerMove={onPointerMove} onPointerUp={onPointerUp} style={{ touchAction:'none' }}>
+      {mergePrompt && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ background:'#fff', borderRadius:16, padding:28, maxWidth:380, width:'90%', boxShadow:'0 8px 40px rgba(0,0,0,.3)' }}>
+            <h3 style={{ fontFamily:'Playfair Display,serif', fontSize:18, color:'#3C4242', marginBottom:8 }}>Table conflict</h3>
+            <p style={{ fontSize:14, color:'#8A8F8F', marginBottom:20 }}>
+              <strong>{mergePrompt.source.first_name}</strong> → Table #{mergePrompt.conflict.table_id ? tables.find(t=>t.id===mergePrompt.conflict.table_id)?.name : '?'} is occupied by <strong>{mergePrompt.conflict.first_name}</strong>. What would you like to do?
+            </p>
+            <div style={{ display:'grid', gap:10 }}>
+              <button onClick={doMerge} style={{ padding:'12px 16px', borderRadius:10, border:'2px solid #F99D54', background:'#FEF4EB', color:'#3C4242', fontSize:14, fontWeight:700, cursor:'pointer', textAlign:'left' }}>
+                🔗 Merge — {mergePrompt.source.first_name} joins {mergePrompt.conflict.first_name}'s table. Both names kept.
+              </button>
+              <button onClick={doSwapConfirm} style={{ padding:'12px 16px', borderRadius:10, border:'2px solid #E2E6E6', background:'#fff', color:'#3C4242', fontSize:14, fontWeight:700, cursor:'pointer', textAlign:'left' }}>
+                🔄 Swap — Exchange tables between both reservations.
+              </button>
+              <button onClick={()=>{ setMergePrompt(null); setDragging(null); setDragOverTable(null) }} style={{ padding:'10px 16px', borderRadius:10, border:'none', background:'#F3F4F6', color:'#8A8F8F', fontSize:13, cursor:'pointer' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Floating drag ghost */}
       {dragging && (
         <div style={{ position:'fixed', left:dragPos.x+12, top:dragPos.y-20, zIndex:9999, background:B.orange, color:'#fff', borderRadius:8, padding:'4px 10px', fontSize:12, fontWeight:700, pointerEvents:'none', boxShadow:'0 4px 12px rgba(0,0,0,.2)' }}>
