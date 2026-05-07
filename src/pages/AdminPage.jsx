@@ -217,7 +217,7 @@ function MiniCalendar({ selected, onSelect }) {
 
 // ─── Reservation Form ─────────────────────────────────────────────────────────
 
-const EMPTY_FORM = { date:'', time:'', guests:2, first_name:'', last_name:'', email:'', phone:'', notes:'', status:'confirmed', table_ids:[], is_manual:true }
+const EMPTY_FORM = { date:'', time:'', guests:2, first_name:'', last_name:'', email:'', phone:'', notes:'', merged_with:'', status:'confirmed', table_ids:[], is_manual:true }
 
 function TableSelector({ tables, selectedIds, occupiedIds, onChange }) {
   const toggle = (id) => {
@@ -324,6 +324,13 @@ function ReservationForm({ initial={}, tables=[], onSave, onCancel, loading }) {
         <label style={S.label}>Internal notes</label>
         <textarea value={f.notes||''} onChange={e=>upd('notes',e.target.value)} rows={3}
           style={{...S.input, resize:'vertical'}}
+          onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
+      </div>
+      <div style={{ gridColumn:'1/-1' }}>
+        <label style={S.label}>🔗 Merged with</label>
+        <input value={f.merged_with||''} onChange={e=>upd('merged_with',e.target.value)}
+          placeholder="Name of merged reservation"
+          style={S.input}
           onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
       </div>
       <div style={{ gridColumn:'1/-1', display:'flex', gap:12 }}>
@@ -679,7 +686,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
                 }}>
                 <div style={{ fontSize:11, fontWeight:700, color:c.text, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r.first_name} {r.last_name||''}</div>
                 <div style={{ fontSize:10, color:c.text, opacity:0.8 }}>{fmtTime(r.time)} · {r.guests}p</div>
-                {r.merged_with && <div style={{ fontSize:9, color:c.text, opacity:0.7, fontStyle:'italic' }}>🔗 +{r.merged_with}</div>}
+                {r.merged_with && <div style={{ fontSize:10, color:c.text, fontWeight:700, background:'rgba(0,0,0,0.08)', borderRadius:4, padding:'1px 4px', marginTop:2 }}>🔗 +{r.merged_with}</div>}
               </div>
             )
           })}
@@ -1855,7 +1862,7 @@ function AdminContent({ role }) {
     try {
       const r = await createReservation({ date:f.date, time:f.time, guests:parseInt(f.guests),
         first_name:f.first_name, last_name:f.last_name, email:f.email, phone:f.phone,
-        notes:f.notes, status:f.status,
+        notes:f.notes, merged_with:f.merged_with||null, status:f.status,
         table_id: f.table_ids?.length===1 ? f.table_ids[0] : null,
         table_ids: f.table_ids||[],
         is_manual:true })
@@ -1869,7 +1876,7 @@ function AdminContent({ role }) {
     try {
       await updateReservation(editModal.id, { date:f.date, time:f.time, guests:parseInt(f.guests),
         first_name:f.first_name, last_name:f.last_name, email:f.email, phone:f.phone,
-        notes:f.notes, status:f.status,
+        notes:f.notes, merged_with:f.merged_with||null, status:f.status,
         table_id: f.table_ids?.length===1 ? f.table_ids[0] : null,
         table_ids: f.table_ids||[] })
       if (f.status==='cancelled' && editModal.status!=='cancelled') {
