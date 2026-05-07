@@ -504,7 +504,7 @@ const SectionLabel = ({ children }) => <div style={{ fontSize:11, fontWeight:700
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function BookingPage() {
+export default function BookingPage({ breakfastLink = '/breakfast' }) {
   const [step,         setStep]         = useState(0)
   const [date,         setDate]         = useState(null)
   const [time,         setTime]         = useState(null)
@@ -561,14 +561,14 @@ export default function BookingPage() {
   // Waitlist mode
   if (waitlistTime) {
     return (
-      <PageWrapper>
+      <PageWrapper breakfastLink={breakfastLink}>
         <WaitlistFlow date={date} time={waitlistTime} onBack={()=>setWaitlistTime(null)} />
       </PageWrapper>
     )
   }
 
   return (
-    <PageWrapper>
+    <PageWrapper breakfastLink={breakfastLink}>
       {done ? (
         <SuccessScreen form={form} date={date} time={time} guests={guests} />
       ) : (
@@ -597,7 +597,7 @@ export default function BookingPage() {
   )
 }
 
-function PageWrapper({ children }) {
+function PageWrapper({ children, breakfastLink='/breakfast' }) {
   return (
     <div style={{
       minHeight:'100vh',
@@ -618,6 +618,11 @@ function PageWrapper({ children }) {
         <div style={{ textAlign:'center', marginBottom:24 }}>
           <img src="/logo.png" alt="Underhuset" style={{ height:110, objectFit:'contain', display:'block', margin:'0 auto' }}/>
           <div style={{ fontSize:11, color:'rgba(255,255,255,.6)', letterSpacing:'.1em', textTransform:'uppercase', marginTop:8 }}>Sakrisøy</div>
+        </div>
+        <div style={{ width:'100%', maxWidth:520, textAlign:'center', marginBottom:12 }}>
+          <a href={breakfastLink} style={{ display:'inline-block', padding:'10px 24px', borderRadius:20, background:'rgba(255,255,255,0.15)', color:'#FAF6F0', fontSize:14, fontWeight:600, textDecoration:'none', border:'1px solid rgba(255,255,255,0.3)', backdropFilter:'blur(4px)' }}>
+            🍳 Breakfast?
+          </a>
         </div>
         <div style={{
           width:'100%', maxWidth:520,

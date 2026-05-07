@@ -1149,6 +1149,8 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
         <div style={{ display:'grid', gap:8 }}>
           {[
             { label:"Ingrid's link",   path:'/ingrid' },
+            { label:"Ingrid's breakfast", path:'/ingrid-breakfast' },
+            { label:"Sakrisøy (cena/lunch)", path:'/sakrisoy' },
             { label:"Marta's link",    path:'/marta'  },
             { label:'Sakrisøy Rorbuer', path:'/breakfast-sakrisoy' },
             { label:'General (no property)', path:'/breakfast' },

@@ -11,10 +11,12 @@ import { ADMIN_SECRET }     from './brand.js'
 export default function App() {
   return (
     <Routes>
-      <Route path="/"                         element={<BookingPage />} />
+      <Route path="/"                         element={<BookingPage breakfastLink="/breakfast" />} />
+      <Route path="/sakrisoy"                    element={<BookingPage breakfastLink="/breakfast-sakrisoy" />} />
       <Route path="/hotel"                    element={<HotelBookingPage />} />
       <Route path="/hotel/:partner"           element={<HotelBookingPage />} />
-      <Route path="/ingrid"                       element={<HotelBookingPage partner="ingrid" />} />
+      <Route path="/ingrid"                       element={<BookingPage breakfastLink="/ingrid-breakfast" />} />
+      <Route path="/ingrid-breakfast"              element={<HotelBookingPage partner="ingrid" />} />
       <Route path="/marta"                        element={<HotelBookingPage partner="marta" />} />
       <Route path="/breakfast"                   element={<BreakfastPage />} />
       <Route path="/breakfast-sakrisoy"           element={<BreakfastSakrisoyPage />} />
