@@ -880,6 +880,8 @@ function ReservationsList({ reservations, tables, onNew, onEdit, onDelete, onSea
   const today = new Date()
   const [calY, setCalY] = useState(today.getFullYear())
   const [calM, setCalM] = useState(today.getMonth())
+  const [rangeStart,   setRangeStart]   = useState(null)
+  const [rangeEnd,     setRangeEnd]     = useState(null)
 
   const filtered = reservations.filter(r => {
     if (dateFilter   && r.date!==dateFilter) return false
@@ -957,6 +959,7 @@ function ReservationsList({ reservations, tables, onNew, onEdit, onDelete, onSea
         </div>
       </div>
       {view === 'month' && (
+        <>
         <div style={{ ...S.card, marginBottom:20 }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
             <button onClick={()=>calM===0?(setCalY(calY-1),setCalM(11)):setCalM(calM-1)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:B.dark, padding:'2px 10px' }}>‹</button>
@@ -976,18 +979,67 @@ function ReservationsList({ reservations, tables, onNew, onEdit, onDelete, onSea
               const isToday = iso===todayISO()
               const isSelected = dateFilter===iso
               return (
-                <div key={day} onClick={()=>{ setDateFilter(isSelected?'':iso); setView('list') }}
+                <div key={day} onClick={()=>{
+                  if (!rangeStart || (rangeStart && rangeEnd)) {
+                    setRangeStart(iso); setRangeEnd(null)
+                  } else {
+                    if (iso < rangeStart) { setRangeEnd(rangeStart); setRangeStart(iso) }
+                    else setRangeEnd(iso)
+                  }
+                }}
                   style={{ borderRadius:8, padding:'6px 4px', textAlign:'center', cursor:'pointer', minHeight:52,
-                    background: isSelected?B.orange : isToday?B.orangeLight : dayRes.length>0?'#F0FDF4':'#FAFAFA',
-                    border: `1px solid ${isSelected?B.orange:isToday?B.orange:'#E5E7EB'}` }}>
-                  <div style={{ fontSize:12, fontWeight:700, color:isSelected?'#fff':B.dark }}>{day}</div>
-                  {dayRes.length>0 && <div style={{ fontSize:10, color:isSelected?'#fff':'#16A34A', fontWeight:600 }}>{dayRes.length}r</div>}
-                  {guests>0 && <div style={{ fontSize:9, color:isSelected?'rgba(255,255,255,.8)':B.gray }}>{guests}p</div>}
+                    background: (iso===rangeStart||iso===rangeEnd)?B.orange:(rangeStart&&rangeEnd&&iso>=rangeStart&&iso<=rangeEnd)?B.orangeLight:isToday?'#FEF3C7':dayRes.length>0?'#F0FDF4':'#FAFAFA',
+                    border: `1px solid ${(iso===rangeStart||iso===rangeEnd)?B.orange:isToday?B.orange:'#E5E7EB'}` }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:(iso===rangeStart||iso===rangeEnd)?'#fff':B.dark }}>{day}</div>
+                  {dayRes.length>0 && <div style={{ fontSize:10, color:(iso===rangeStart||iso===rangeEnd)?'#fff':'#16A34A', fontWeight:600 }}>{dayRes.length}r</div>}
+                  {guests>0 && <div style={{ fontSize:9, color:(iso===rangeStart||iso===rangeEnd)?'rgba(255,255,255,.8)':B.gray }}>{guests}p</div>}
                 </div>
               )
             })}
           </div>
+          {/* Range indicator */}
+          {rangeStart && (
+            <div style={{ marginTop:12, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <span style={{ fontSize:13, color:B.dark }}>
+                {rangeStart && !rangeEnd ? `From: ${rangeStart} — select end date` : `${rangeStart} → ${rangeEnd}`}
+              </span>
+              {rangeStart && rangeEnd && (
+                <Btn size="sm" onClick={()=>{ setRangeStart(null); setRangeEnd(null) }}>✕ Clear range</Btn>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* Reservations for selected range or month */}
+        <div style={{ ...S.card, padding:0, overflow:'auto', marginTop:16 }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+            <thead><tr style={{ background:'#FAFAFA' }}>
+              {['Date','Time','Name','Guests','Table','Status'].map(h=><th key={h} style={S.th}>{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {reservations.filter(r=>{
+                const monthStr = `${calY}-${String(calM+1).padStart(2,'0')}`
+                if (rangeStart && rangeEnd) return r.date >= rangeStart && r.date <= rangeEnd
+                return r.date.startsWith(monthStr)
+              }).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time)).map(r=>(
+                <tr key={r.id} onClick={()=>onEdit(r)} style={{ cursor:'pointer', borderTop:`1px solid ${B.grayLight}` }}
+                  onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  <td style={S.td}>{fmtDate(r.date)}</td>
+                  <td style={S.td}>{fmtTime(r.time)}</td>
+                  <td style={S.td}>
+                    <div style={{ fontWeight:600 }}>{r.first_name} {r.last_name||''}</div>
+                    {r.merged_with && <div style={{ fontSize:11, color:'#7C3AED', fontWeight:700 }}>🔗 +{r.merged_with}</div>}
+                  </td>
+                  <td style={S.td}>👥 {r.guests}</td>
+                  <td style={S.td}><TableCell r={r} tables={tables}/></td>
+                  <td style={S.td}><Badge status={r.status}/></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        </>
       )}
 
       <div style={{ display:'grid', gridTemplateColumns:'auto auto auto 1fr', gap:12, marginBottom:20, alignItems:'end' }}>
