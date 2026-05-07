@@ -1153,7 +1153,8 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
             { label:"Sakrisøy (cena/lunch)", path:'/sakrisoy' },
             { label:"Marta's link",    path:'/marta'  },
             { label:'Sakrisøy Rorbuer', path:'/breakfast-sakrisoy' },
-            { label:'General (no property)', path:'/breakfast' },
+            { label:'General (cena/lunch)', path:'/breakfast' },
+            { label:'General (desayuno)', path:'/breakfast-general' },
           ].map(({ label, path })=>(
             <div key={path} style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
               <span style={{ fontSize:12, color:B.blue, fontWeight:600, minWidth:100 }}>{label}</span>
