@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { B, MONTHS_EN, DAYS_SHORT, ALL_TIMES, BLOCK_HOURS } from '../brand.js'
-import { createReservation, getAvailableSlots, addToWaitlist, getSettings, sendEmail } from '../lib/supabase.js'
+import { createReservation, getAvailableSlots, addToWaitlist, getSettings, sendEmail, autoAssignTable } from '../lib/supabase.js'
 
 function toISO(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
@@ -545,11 +545,13 @@ export default function BookingPage({ breakfastLink = '/breakfast' }) {
   const confirm = async () => {
     setLoading(true); setError(null)
     try {
+      const assignedTable = await autoAssignTable(toISO(date), time, guests)
       const r = await createReservation({
         date: toISO(date), time: time+':00', guests,
         first_name: form.first_name, last_name: form.last_name,
         email: form.email, phone: form.phone, notes: form.notes,
         status: 'confirmed', is_manual: false,
+        table_id: assignedTable?.id || null,
       })
       await sendEmail('confirmation', { reservation: r })
       setDone(true)

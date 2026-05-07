@@ -205,6 +205,39 @@ export async function getAvailableSlots(date) {
   return { byTime, totalCapacity, totalTables }
 }
 
+export async function autoAssignTable(date, time, guests) {
+  const BLOCK_H = 1.5
+  const [rh, rm] = time.split(':').map(Number)
+  const resStart = rh + rm / 60
+  const resEnd = resStart + BLOCK_H
+
+  const { data: tables } = await supabase
+    .from('tables')
+    .select('id, name, capacity')
+    .eq('is_active', true)
+    .eq('zone', 'interior')
+    .eq('is_blocked', false)
+    .order('capacity', { ascending: true })
+
+  const { data: existing } = await supabase
+    .from('reservations')
+    .select('table_id, time')
+    .eq('date', date)
+    .not('status', 'in', '("cancelled","early_free","completed","no_show")')
+    .not('table_id', 'is', null)
+
+  const occupiedIds = new Set()
+  for (const r of existing || []) {
+    const [eh, em] = r.time.split(':').map(Number)
+    const eStart = eh + em / 60
+    const eEnd = eStart + BLOCK_H
+    if (resStart < eEnd && resEnd > eStart) occupiedIds.add(r.table_id)
+  }
+
+  const available = (tables || []).filter(t => t.capacity >= guests && !occupiedIds.has(t.id))
+  return available[0] || null
+}
+
 export async function getOccupiedTablesForSlot(date, time) {
   const { data } = await supabase
     .from('reservations')
