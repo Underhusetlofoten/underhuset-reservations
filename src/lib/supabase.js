@@ -164,6 +164,30 @@ export async function setSetting(key, value) {
   if (error) throw error
 }
 
+// ─── Tags ─────────────────────────────────────────────────────────────────────
+
+export async function getTags() {
+  const { data, error } = await supabase.from('tags').select('*').order('category').order('name')
+  if (error) throw error
+  return data || []
+}
+
+export async function createTag(payload) {
+  const { data, error } = await supabase.from('tags').insert(payload).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function updateTag(id, payload) {
+  const { error } = await supabase.from('tags').update(payload).eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteTag(id) {
+  const { error } = await supabase.from('tags').delete().eq('id', id)
+  if (error) throw error
+}
+
 // ─── Availability ─────────────────────────────────────────────────────────────
 
 export async function getAvailableSlots(date) {

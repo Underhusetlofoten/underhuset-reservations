@@ -4,6 +4,7 @@ import { B, STATUS_COLOR, ALL_TIMES, MONTHS_EN, DAYS_SHORT, DAY_KEYS, DAY_NAMES,
 import StatsTab from './StatsTab.jsx'
 import {
   getReservations, createReservation, updateReservation, deleteReservation, getDeletedReservations, restoreReservation,
+  getTags, createTag, updateTag, deleteTag,
   seatReservation, earlyFreeReservation,
   getTables, createTable, updateTable, deleteTable,
   getSettings, setSetting, getOccupiedTablesForSlot,
@@ -1597,7 +1598,85 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
 
 // ─── Tab: Settings ────────────────────────────────────────────────────────────
 
-function SettingsTab({ settings, onSave }) {
+
+function TagManager({ tags, onTagsChange }) {
+  const CATEGORIES = ['Admin', 'Occasion', 'Group', 'Party']
+  const [newName, setNewName] = useState('')
+  const [newCat, setNewCat] = useState('Admin')
+  const [newColor, setNewColor] = useState('#F99D54')
+  const [newEmoji, setNewEmoji] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const byCategory = CATEGORIES.reduce((acc, cat) => {
+    acc[cat] = tags.filter(t => t.category === cat)
+    return acc
+  }, {})
+
+  const handleAdd = async () => {
+    if (!newName.trim()) return
+    setSaving(true)
+    try {
+      await createTag({ name: newName.trim(), category: newCat, color: newColor, emoji: newEmoji||null })
+      setNewName(''); setNewEmoji('')
+      onTagsChange()
+    } finally { setSaving(false) }
+  }
+
+  const handleDelete = async (id) => {
+    await deleteTag(id)
+    onTagsChange()
+  }
+
+  return (
+    <div style={{ display:'grid', gap:20 }}>
+      <div style={{ background:B.orangePale, borderRadius:12, padding:16 }}>
+        <div style={{ fontSize:13, fontWeight:700, color:B.dark, marginBottom:12 }}>Add new tag</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr auto auto auto auto', gap:8, alignItems:'end' }}>
+          <div>
+            <label style={S.label}>Name</label>
+            <input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="e.g. Invoice sent"
+              style={S.input} onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}
+              onKeyDown={e=>e.key==='Enter'&&handleAdd()}/>
+          </div>
+          <div>
+            <label style={S.label}>Category</label>
+            <select value={newCat} onChange={e=>setNewCat(e.target.value)} style={{...S.input, cursor:'pointer', appearance:'auto'}}>
+              {CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={S.label}>Emoji</label>
+            <input value={newEmoji} onChange={e=>setNewEmoji(e.target.value)} placeholder="🎂"
+              style={{...S.input, width:60, textAlign:'center'}}/>
+          </div>
+          <div>
+            <label style={S.label}>Color</label>
+            <input type="color" value={newColor} onChange={e=>setNewColor(e.target.value)}
+              style={{ width:44, height:38, borderRadius:8, border:'2px solid #E2E6E6', cursor:'pointer', padding:2 }}/>
+          </div>
+          <Btn onClick={handleAdd} disabled={saving||!newName.trim()}>+ Add</Btn>
+        </div>
+      </div>
+      {CATEGORIES.map(cat => (
+        <div key={cat}>
+          <div style={{ fontSize:12, fontWeight:700, color:B.gray, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8 }}>{cat}</div>
+          {byCategory[cat].length === 0 && <div style={{ fontSize:12, color:B.grayLight }}>No tags yet</div>}
+          <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+            {byCategory[cat].map(tag => (
+              <div key={tag.id} style={{ display:'flex', alignItems:'center', gap:6, background:tag.color+'22', border:'2px solid '+tag.color, borderRadius:20, padding:'4px 12px' }}>
+                {tag.emoji && <span>{tag.emoji}</span>}
+                <span style={{ fontSize:13, fontWeight:600, color:tag.color }}>{tag.name}</span>
+                <button onClick={()=>handleDelete(tag.id)} style={{ background:'none', border:'none', cursor:'pointer', color:tag.color, fontSize:14, lineHeight:1, opacity:0.7, padding:'0 2px' }}>x</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function SettingsTab({ settings, onSave, tags=[], onTagsChange }) {
   const [s,     setS]     = useState(settings)
   const [saved, setSaved] = useState(false)
   useEffect(()=>setS(settings),[settings])
@@ -1904,6 +1983,7 @@ function AdminContent({ role }) {
   const [saving,       setSaving]       = useState(false)
   const [deleted,      setDeleted]      = useState([])
   const [showDeleted,  setShowDeleted]  = useState(false)
+  const [tags,         setTags]         = useState([])
 
   const loadAll = useCallback(async (silent=false) => {
     if (!silent) setLoading(true)
@@ -1914,6 +1994,7 @@ function AdminContent({ role }) {
       ])
       setReservations(res||[]); setTables(tbl||[]); setWaitlist(wl||[])
       const del = await getDeletedReservations(); setDeleted(del||[])
+      const tgs = await getTags(); setTags(tgs||[])
       setBreakfast(bfst||[]); setSettings(set||{})
     } catch(e) { console.error(e) }
     finally { setLoading(false) }
@@ -2091,7 +2172,7 @@ function AdminContent({ role }) {
             {tab==='breakfast' && <BreakfastTab breakfast={breakfast} settings={settings} onRefresh={loadAll}/>}
             {tab==='stats'     && <StatsTab reservations={reservations} breakfast={breakfast} settings={settings}/>}
             {tab==='tables'    && <TablesManager tables={tables} onRefresh={loadAll}/>}
-            {tab==='settings' && role==='admin' && <SettingsTab settings={settings} onSave={s=>setSettings(s)}/>}
+            {tab==='settings' && role==='admin' && <SettingsTab settings={settings} onSave={s=>setSettings(s)} tags={tags} onTagsChange={()=>getTags().then(setTags)}/>}
           </>
         )}
       </div>
