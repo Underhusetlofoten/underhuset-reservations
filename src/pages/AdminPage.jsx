@@ -1082,7 +1082,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
             style={S.input} onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
         </div>
       </div>
-      <div style={{ ...S.card, padding:0, overflow:'auto' }}>
+      {view!=='month' && <div style={{ ...S.card, padding:0, overflow:'auto' }}>
         <table style={{ width:'100%', borderCollapse:'collapse', minWidth:800 }}>
           <thead>
             <tr>{['Code','Date','Time','Name','Guests','Table','Status','Source','Notes',''].map(h=><th key={h} style={S.th}>{h}</th>)}</tr>
@@ -1118,7 +1118,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
       <p style={{ fontSize:12, color:B.gray, marginTop:10 }}>{filtered.length} reservation(s)</p>
     </div>
   )
