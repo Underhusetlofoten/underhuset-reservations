@@ -780,7 +780,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
 }
 
 
-function Dashboard({ reservations, tables, onEditReservation, onSeated, onEarlyFree, onWalkIn, onRefresh }) {
+function Dashboard({ reservations, tables, tags=[], onEditReservation, onSeated, onEarlyFree, onWalkIn, onRefresh }) {
   const today     = todayISO()
   const todayRes  = reservations.filter(r=>r.date===today&&r.status!=='cancelled')
   const pending   = todayRes.filter(r=>r.status==='pending').length
@@ -862,6 +862,7 @@ function Dashboard({ reservations, tables, onEditReservation, onSeated, onEarlyF
                     <td style={S.td}>
                       <div style={{ fontWeight:600 }}>{r.first_name} {r.last_name}</div>
                       {r.merged_with && <div style={{ fontSize:11, color:'#7C3AED', fontWeight:700 }}>🔗 +{r.merged_with}</div>}
+                      <TagBadges tagIds={r.tag_ids} tags={tags}/>
                     </td>
                     <td style={S.td}>👥 {r.guests}</td>
                     <td style={S.td}><TableCell r={r} tables={tables}/></td>
@@ -1045,6 +1046,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
                   <td style={S.td}>
                     <div style={{ fontWeight:600 }}>{r.first_name} {r.last_name||''}</div>
                     {r.merged_with && <div style={{ fontSize:11, color:'#7C3AED', fontWeight:700 }}>🔗 +{r.merged_with}</div>}
+                    <TagBadges tagIds={r.tag_ids} tags={tags}/>
                   </td>
                   <td style={S.td}>👥 {r.guests}</td>
                   <td style={S.td}><TableCell r={r} tables={tables}/></td>
@@ -1097,27 +1099,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
                   <div style={{ fontWeight:600 }}>{r.first_name} {r.last_name}</div>
                   <div style={{ fontSize:11, color:B.gray }}>{r.email}</div>
                   {r.merged_with && <div style={{ fontSize:11, color:'#7C3AED', fontWeight:700 }}>🔗 +{r.merged_with}</div>}
-                  {r.tag_ids && (() => {
-                    try {
-                      const ids = JSON.parse(r.tag_ids)
-                      if (!ids.length) return null
-                      const bycat = CATEGORIES.map(cat => ({
-                        cat, color: CAT_COLORS[cat], emoji: CAT_EMOJI[cat],
-                        tagList: ids.map(id=>tags.find(t=>t.id===id)).filter(t=>t&&t.category===cat)
-                      })).filter(x=>x.tagList.length>0)
-                      return bycat.length > 0 && (
-                        <div style={{ display:'flex', gap:4, marginTop:4, flexWrap:'wrap' }}>
-                          {bycat.map(({cat,color,emoji,tagList})=>(
-                            <div key={cat} title={tagList.map(t=>(t.emoji?t.emoji+' ':'')+t.name).join(', ')}
-                              style={{ display:'flex', alignItems:'center', gap:3, background:color+'22', border:'1px solid '+color, borderRadius:12, padding:'1px 8px', cursor:'help' }}>
-                              <span style={{ fontSize:10 }}>{emoji}</span>
-                              <span style={{ fontSize:10, fontWeight:700, color }}>{tagList.length}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )
-                    } catch { return null }
-                  })()}
+                  <TagBadges tagIds={r.tag_ids} tags={tags}/>
                 </td>
                 <td style={S.td}>👥 {r.guests}</td>
                 <td style={S.td}><TableCell r={r} tables={tables}/></td>
@@ -1763,6 +1745,46 @@ function TagSelector({ tags, selectedIds=[], onChange }) {
   )
 }
 
+function TagBadges({ tagIds, tags }) {
+  const [openCat, setOpenCat] = useState(null)
+  if (!tagIds) return null
+  let ids = []
+  try { ids = JSON.parse(tagIds) } catch { return null }
+  if (!ids.length) return null
+
+  const bycat = CATEGORIES.map(cat => ({
+    cat, color: CAT_COLORS[cat], emoji: CAT_EMOJI[cat],
+    tagList: ids.map(id=>tags.find(t=>t.id===id)).filter(t=>t&&t.category===cat)
+  })).filter(x=>x.tagList.length>0)
+
+  if (!bycat.length) return null
+
+  return (
+    <div style={{ display:'flex', gap:3, flexWrap:'wrap', marginTop:3 }}>
+      {bycat.map(({cat,color,emoji,tagList})=>(
+        <div key={cat} style={{ position:'relative' }}>
+          <div onClick={e=>{ e.stopPropagation(); setOpenCat(openCat===cat?null:cat) }}
+            style={{ display:'flex', alignItems:'center', gap:3, background:color+'22', border:'1px solid '+color, borderRadius:12, padding:'2px 7px', cursor:'pointer' }}>
+            <span style={{ fontSize:10 }}>{emoji}</span>
+            <span style={{ fontSize:10, fontWeight:700, color }}>{tagList.length}</span>
+          </div>
+          {openCat===cat && (
+            <div style={{ position:'absolute', top:'100%', left:0, marginTop:3, background:'#fff', borderRadius:10, boxShadow:'0 4px 16px rgba(0,0,0,.15)', border:'1px solid #E2E6E6', zIndex:999, minWidth:160, padding:6 }}>
+              <div style={{ fontSize:10, fontWeight:700, color, textTransform:'uppercase', padding:'4px 8px', marginBottom:2 }}>{emoji} {cat}</div>
+              {tagList.map(tag=>(
+                <div key={tag.id} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 8px', borderRadius:6 }}>
+                  {tag.emoji && <span style={{ fontSize:11 }}>{tag.emoji}</span>}
+                  <span style={{ fontSize:12, color:B.dark }}>{tag.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function SettingsTab({ settings, onSave, tags=[], onTagsChange }) {
   const [s,     setS]     = useState(settings)
   const [saved, setSaved] = useState(false)
@@ -2219,7 +2241,7 @@ function AdminContent({ role }) {
       <div style={{ maxWidth:'95%', margin:'0 auto', padding:'28px 24px' }}>
         {loading ? <div style={{ textAlign:'center', padding:80, color:B.gray }}>Loading…</div> : (
           <>
-            {tab==='dashboard'    && <Dashboard reservations={reservations} tables={tables}
+            {tab==='dashboard'    && <Dashboard reservations={reservations} tables={tables} tags={tags}
               onEditReservation={r=>setEditModal(r)}
               onSeated={handleSeated} onEarlyFree={handleEarlyFree}
               onWalkIn={()=>setWalkInModal(true)} onRefresh={loadAll}/>}
