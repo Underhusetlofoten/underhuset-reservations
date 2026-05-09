@@ -2170,7 +2170,7 @@ function AdminContent({ role }) {
               onSeated={handleSeated} onEarlyFree={handleEarlyFree}
               onWalkIn={()=>setWalkInModal(true)} onRefresh={loadAll}/>}
             {tab==='reservations' && <>
-              <ReservationsList reservations={reservations} tables={tables}
+              <ReservationsList reservations={reservations} tables={tables} tags={tags}
                 onNew={()=>setNewModal(true)} onEdit={r=>setEditModal(r)} onDelete={r=>setDeleteModal(r)}
                 onSeated={handleSeated} onEarlyFree={handleEarlyFree}/>
               {deleted.length > 0 && (
