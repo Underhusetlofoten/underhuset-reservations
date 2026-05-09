@@ -1727,7 +1727,7 @@ function TagSelector({ tags, selectedIds=[], onChange }) {
               {selected.length>0 && <span style={{ background:'rgba(255,255,255,.3)', color:'#fff', borderRadius:10, padding:'0 6px', fontSize:11, fontWeight:700 }}>{selected.length}</span>}
             </button>
             {isOpen && (
-              <div style={{ position:'absolute', top:'100%', left:0, marginTop:4, background:'#fff', borderRadius:12, boxShadow:'0 4px 20px rgba(0,0,0,.15)', border:'1px solid #E2E6E6', zIndex:50, minWidth:180, padding:8 }}>
+              <div style={{ position:'absolute', bottom:'100%', left:0, marginBottom:4, background:'#fff', borderRadius:12, boxShadow:'0 4px 20px rgba(0,0,0,.15)', border:'1px solid #E2E6E6', zIndex:50, minWidth:180, padding:8 }}>
                 {catTags.map(tag=>{
                   const sel = selectedIds.includes(tag.id)
                   return (
@@ -1774,7 +1774,7 @@ function TagBadges({ tagIds, tags }) {
             <span style={{ fontSize:10, fontWeight:700, color }}>{tagList.length}</span>
           </div>
           {openCat===cat && (
-            <div style={{ position:'absolute', top:'100%', left:0, marginTop:3, background:'#fff', borderRadius:10, boxShadow:'0 4px 16px rgba(0,0,0,.15)', border:'1px solid #E2E6E6', zIndex:999, minWidth:160, padding:6 }}>
+            <div style={{ position:'absolute', bottom:'100%', left:0, marginBottom:3, background:'#fff', borderRadius:10, boxShadow:'0 4px 16px rgba(0,0,0,.15)', border:'1px solid #E2E6E6', zIndex:999, minWidth:160, padding:6 }}>
               <div style={{ fontSize:10, fontWeight:700, color, textTransform:'uppercase', padding:'4px 8px', marginBottom:2 }}>{emoji} {cat}</div>
               {tagList.map(tag=>(
                 <div key={tag.id} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 8px', borderRadius:6 }}>
