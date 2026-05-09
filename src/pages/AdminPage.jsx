@@ -889,7 +889,7 @@ function Dashboard({ reservations, tables, onEditReservation, onSeated, onEarlyF
 
 // ─── Tab: Reservations ────────────────────────────────────────────────────────
 
-function ReservationsList({ reservations, tables, onNew, onEdit, onDelete, onSeated, onEarlyFree }) {
+function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDelete, onSeated, onEarlyFree }) {
   const [dateFilter,   setDateFilter]   = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [search,       setSearch]       = useState('')
@@ -1099,6 +1099,7 @@ function ReservationsList({ reservations, tables, onNew, onEdit, onDelete, onSea
                   <div style={{ fontWeight:600 }}>{r.first_name} {r.last_name}</div>
                   <div style={{ fontSize:11, color:B.gray }}>{r.email}</div>
                   {r.merged_with && <div style={{ fontSize:11, color:'#7C3AED', fontWeight:700 }}>🔗 +{r.merged_with}</div>}
+                  {r.tag_ids && (() => { try { const ids=JSON.parse(r.tag_ids); return ids.length>0 && <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginTop:4 }}>{ids.map(id=>{ const t=tags.find(t=>t.id===id); return t?<span key={id} style={{ background:t.color+'22', border:'1px solid '+t.color, color:t.color, borderRadius:12, padding:'1px 6px', fontSize:10, fontWeight:700 }}>{t.emoji?t.emoji+' ':''}{t.name}</span>:null })}</div> } catch { return null } })()}
                 </td>
                 <td style={S.td}>👥 {r.guests}</td>
                 <td style={S.td}><TableCell r={r} tables={tables}/></td>
@@ -1667,8 +1668,14 @@ function TagManager({ tags, onTagsChange }) {
           </div>
           <div>
             <label style={S.label}>Color</label>
-            <input type="color" value={newColor} onChange={e=>setNewColor(e.target.value)}
-              style={{ width:44, height:38, borderRadius:8, border:'2px solid #E2E6E6', cursor:'pointer', padding:2 }}/>
+            <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+              <input type="color" value={newColor} onChange={e=>setNewColor(e.target.value)}
+                style={{ width:44, height:38, borderRadius:8, border:'2px solid #E2E6E6', cursor:'pointer', padding:2 }}/>
+              {[...new Set(tags.map(t=>t.color))].map(c=>(
+                <div key={c} onClick={()=>setNewColor(c)}
+                  style={{ width:24, height:24, borderRadius:6, background:c, cursor:'pointer', border:c===newColor?'3px solid #3C4242':'2px solid transparent' }}/>
+              ))}
+            </div>
           </div>
           <Btn onClick={handleAdd} disabled={saving||!newName.trim()}>+ Add</Btn>
         </div>
