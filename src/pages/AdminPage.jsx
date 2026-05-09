@@ -278,7 +278,17 @@ function TableSelector({ tables, selectedIds, occupiedIds, onChange }) {
 
 function ReservationForm({ initial={}, tables=[], tags=[], onSave, onCancel, loading }) {
   const initTableIds = initial.table_ids || (initial.table_id ? [initial.table_id] : [])
-  const [f,           setF]           = useState({ ...EMPTY_FORM, ...initial, table_ids: initTableIds })
+  const initTagIds = (() => {
+    try {
+      const v = initial.tag_ids
+      if (!v || v === '[]' || v === 'null') return []
+      if (Array.isArray(v)) return v
+      const parsed = JSON.parse(v)
+      if (Array.isArray(parsed)) return parsed
+      return []
+    } catch { return [] }
+  })()
+  const [f,           setF]           = useState({ ...EMPTY_FORM, ...initial, table_ids: initTableIds, tag_ids: initTagIds })
   const [occupiedIds, setOccupiedIds] = useState([])
   const upd = (k,v) => setF(p=>({...p,[k]:v}))
 
