@@ -339,19 +339,7 @@ function ReservationForm({ initial={}, tables=[], tags=[], onSave, onCancel, loa
       </div>
       <div style={{ gridColumn:'1/-1' }}>
         <label style={S.label}>🏷️ Tags</label>
-        <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:4 }}>
-          {tags.map(tag => {
-            const selected = (f.tag_ids||[]).includes(tag.id)
-            return (
-              <div key={tag.id} onClick={()=>upd('tag_ids', selected?(f.tag_ids||[]).filter(id=>id!==tag.id):[...(f.tag_ids||[]),tag.id])}
-                style={{ display:'flex', alignItems:'center', gap:4, background:selected?tag.color:tag.color+'22', border:'2px solid '+tag.color, borderRadius:20, padding:'4px 10px', cursor:'pointer', transition:'all .15s' }}>
-                {tag.emoji && <span style={{ fontSize:12 }}>{tag.emoji}</span>}
-                <span style={{ fontSize:12, fontWeight:600, color:selected?'#fff':tag.color }}>{tag.name}</span>
-              </div>
-            )
-          })}
-          {tags.length===0 && <span style={{ fontSize:12, color:B.gray }}>No tags created yet — add them in Settings</span>}
-        </div>
+        <TagSelector tags={tags} selectedIds={f.tag_ids||[]} onChange={ids=>upd('tag_ids',ids)}/>
       </div>
       <div style={{ gridColumn:'1/-1' }}>
         <label style={S.label}>🔗 Merged with</label>
@@ -1109,7 +1097,27 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
                   <div style={{ fontWeight:600 }}>{r.first_name} {r.last_name}</div>
                   <div style={{ fontSize:11, color:B.gray }}>{r.email}</div>
                   {r.merged_with && <div style={{ fontSize:11, color:'#7C3AED', fontWeight:700 }}>🔗 +{r.merged_with}</div>}
-                  {r.tag_ids && (() => { try { const ids=JSON.parse(r.tag_ids); return ids.length>0 && <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginTop:4 }}>{ids.map(id=>{ const t=tags.find(t=>t.id===id); return t?<span key={id} style={{ background:t.color+'22', border:'1px solid '+t.color, color:t.color, borderRadius:12, padding:'1px 6px', fontSize:10, fontWeight:700 }}>{t.emoji?t.emoji+' ':''}{t.name}</span>:null })}</div> } catch { return null } })()}
+                  {r.tag_ids && (() => {
+                    try {
+                      const ids = JSON.parse(r.tag_ids)
+                      if (!ids.length) return null
+                      const bycat = CATEGORIES.map(cat => ({
+                        cat, color: CAT_COLORS[cat], emoji: CAT_EMOJI[cat],
+                        tagList: ids.map(id=>tags.find(t=>t.id===id)).filter(t=>t&&t.category===cat)
+                      })).filter(x=>x.tagList.length>0)
+                      return bycat.length > 0 && (
+                        <div style={{ display:'flex', gap:4, marginTop:4, flexWrap:'wrap' }}>
+                          {bycat.map(({cat,color,emoji,tagList})=>(
+                            <div key={cat} title={tagList.map(t=>(t.emoji?t.emoji+' ':'')+t.name).join(', ')}
+                              style={{ display:'flex', alignItems:'center', gap:3, background:color+'22', border:'1px solid '+color, borderRadius:12, padding:'1px 8px', cursor:'help' }}>
+                              <span style={{ fontSize:10 }}>{emoji}</span>
+                              <span style={{ fontSize:10, fontWeight:700, color }}>{tagList.length}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    } catch { return null }
+                  })()}
                 </td>
                 <td style={S.td}>👥 {r.guests}</td>
                 <td style={S.td}><TableCell r={r} tables={tables}/></td>
@@ -1626,24 +1634,26 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
 // ─── Tab: Settings ────────────────────────────────────────────────────────────
 
 
+const CAT_COLORS = {
+  Admin:   '#F59E0B',
+  Occasion:'#3B82F6',
+  Group:   '#10B981',
+  Party:   '#7C3AED',
+}
+const CATEGORIES = ['Admin', 'Occasion', 'Group', 'Party']
+const CAT_EMOJI = { Admin:'📋', Occasion:'🎉', Group:'👥', Party:'🎈' }
+
 function TagManager({ tags, onTagsChange }) {
-  const CATEGORIES = ['Admin', 'Occasion', 'Group', 'Party']
   const [newName, setNewName] = useState('')
   const [newCat, setNewCat] = useState('Admin')
-  const [newColor, setNewColor] = useState('#F99D54')
   const [newEmoji, setNewEmoji] = useState('')
   const [saving, setSaving] = useState(false)
-
-  const byCategory = CATEGORIES.reduce((acc, cat) => {
-    acc[cat] = tags.filter(t => t.category === cat)
-    return acc
-  }, {})
 
   const handleAdd = async () => {
     if (!newName.trim()) return
     setSaving(true)
     try {
-      await createTag({ name: newName.trim(), category: newCat, color: newColor, emoji: newEmoji||null })
+      await createTag({ name: newName.trim(), category: newCat, color: CAT_COLORS[newCat], emoji: newEmoji||null })
       setNewName(''); setNewEmoji('')
       onTagsChange()
     } finally { setSaving(false) }
@@ -1658,7 +1668,7 @@ function TagManager({ tags, onTagsChange }) {
     <div style={{ display:'grid', gap:20 }}>
       <div style={{ background:B.orangePale, borderRadius:12, padding:16 }}>
         <div style={{ fontSize:13, fontWeight:700, color:B.dark, marginBottom:12 }}>Add new tag</div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr auto auto auto auto', gap:8, alignItems:'end' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr auto auto auto', gap:8, alignItems:'end' }}>
           <div>
             <label style={S.label}>Name</label>
             <input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="e.g. Invoice sent"
@@ -1668,7 +1678,7 @@ function TagManager({ tags, onTagsChange }) {
           <div>
             <label style={S.label}>Category</label>
             <select value={newCat} onChange={e=>setNewCat(e.target.value)} style={{...S.input, cursor:'pointer', appearance:'auto'}}>
-              {CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
+              {CATEGORIES.map(c=><option key={c} value={c}>{CAT_EMOJI[c]} {c}</option>)}
             </select>
           </div>
           <div>
@@ -1676,35 +1686,79 @@ function TagManager({ tags, onTagsChange }) {
             <input value={newEmoji} onChange={e=>setNewEmoji(e.target.value)} placeholder="🎂"
               style={{...S.input, width:60, textAlign:'center'}}/>
           </div>
-          <div>
-            <label style={S.label}>Color</label>
-            <div style={{ display:'flex', gap:4, alignItems:'center' }}>
-              <input type="color" value={newColor} onChange={e=>setNewColor(e.target.value)}
-                style={{ width:44, height:38, borderRadius:8, border:'2px solid #E2E6E6', cursor:'pointer', padding:2 }}/>
-              {[...new Set(tags.map(t=>t.color))].map(c=>(
-                <div key={c} onClick={()=>setNewColor(c)}
-                  style={{ width:24, height:24, borderRadius:6, background:c, cursor:'pointer', border:c===newColor?'3px solid #3C4242':'2px solid transparent' }}/>
-              ))}
-            </div>
-          </div>
           <Btn onClick={handleAdd} disabled={saving||!newName.trim()}>+ Add</Btn>
         </div>
       </div>
-      {CATEGORIES.map(cat => (
-        <div key={cat}>
-          <div style={{ fontSize:12, fontWeight:700, color:B.gray, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8 }}>{cat}</div>
-          {byCategory[cat].length === 0 && <div style={{ fontSize:12, color:B.grayLight }}>No tags yet</div>}
-          <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
-            {byCategory[cat].map(tag => (
-              <div key={tag.id} style={{ display:'flex', alignItems:'center', gap:6, background:tag.color+'22', border:'2px solid '+tag.color, borderRadius:20, padding:'4px 12px' }}>
-                {tag.emoji && <span>{tag.emoji}</span>}
-                <span style={{ fontSize:13, fontWeight:600, color:tag.color }}>{tag.name}</span>
-                <button onClick={()=>handleDelete(tag.id)} style={{ background:'none', border:'none', cursor:'pointer', color:tag.color, fontSize:14, lineHeight:1, opacity:0.7, padding:'0 2px' }}>x</button>
-              </div>
-            ))}
+      {CATEGORIES.map(cat => {
+        const catTags = tags.filter(t=>t.category===cat)
+        const color = CAT_COLORS[cat]
+        return (
+          <div key={cat}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+              <div style={{ width:12, height:12, borderRadius:3, background:color }}/>
+              <span style={{ fontSize:12, fontWeight:700, color, textTransform:'uppercase', letterSpacing:'.06em' }}>{CAT_EMOJI[cat]} {cat}</span>
+            </div>
+            {catTags.length === 0 && <div style={{ fontSize:12, color:B.grayLight }}>No tags yet</div>}
+            <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+              {catTags.map(tag => (
+                <div key={tag.id} style={{ display:'flex', alignItems:'center', gap:6, background:color+'22', border:'2px solid '+color, borderRadius:20, padding:'4px 12px' }}>
+                  {tag.emoji && <span>{tag.emoji}</span>}
+                  <span style={{ fontSize:13, fontWeight:600, color }}>{tag.name}</span>
+                  <button onClick={()=>handleDelete(tag.id)} style={{ background:'none', border:'none', cursor:'pointer', color, fontSize:14, lineHeight:1, opacity:0.7, padding:'0 2px' }}>x</button>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
+    </div>
+  )
+}
+
+function TagSelector({ tags, selectedIds=[], onChange }) {
+  const [openCat, setOpenCat] = useState(null)
+
+  const toggle = (id) => {
+    const next = selectedIds.includes(id) ? selectedIds.filter(x=>x!==id) : [...selectedIds, id]
+    onChange(next)
+  }
+
+  return (
+    <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+      {CATEGORIES.map(cat => {
+        const catTags = tags.filter(t=>t.category===cat)
+        if (catTags.length===0) return null
+        const color = CAT_COLORS[cat]
+        const selected = catTags.filter(t=>selectedIds.includes(t.id))
+        const isOpen = openCat===cat
+        return (
+          <div key={cat} style={{ position:'relative' }}>
+            <button onClick={()=>setOpenCat(isOpen?null:cat)}
+              style={{ display:'flex', alignItems:'center', gap:6, background:selected.length>0?color:color+'22', border:'2px solid '+color, borderRadius:20, padding:'6px 14px', cursor:'pointer', transition:'all .15s' }}>
+              <span style={{ fontSize:12 }}>{CAT_EMOJI[cat]}</span>
+              <span style={{ fontSize:12, fontWeight:700, color:selected.length>0?'#fff':color }}>{cat}</span>
+              {selected.length>0 && <span style={{ background:'rgba(255,255,255,.3)', color:'#fff', borderRadius:10, padding:'0 6px', fontSize:11, fontWeight:700 }}>{selected.length}</span>}
+            </button>
+            {isOpen && (
+              <div style={{ position:'absolute', top:'100%', left:0, marginTop:4, background:'#fff', borderRadius:12, boxShadow:'0 4px 20px rgba(0,0,0,.15)', border:'1px solid #E2E6E6', zIndex:50, minWidth:180, padding:8 }}>
+                {catTags.map(tag=>{
+                  const sel = selectedIds.includes(tag.id)
+                  return (
+                    <div key={tag.id} onClick={()=>toggle(tag.id)}
+                      style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, cursor:'pointer', background:sel?color+'22':'transparent' }}>
+                      <div style={{ width:10, height:10, borderRadius:3, background:color, opacity:sel?1:0.3 }}/>
+                      {tag.emoji && <span style={{ fontSize:12 }}>{tag.emoji}</span>}
+                      <span style={{ fontSize:13, fontWeight:sel?700:400, color:sel?color:B.dark }}>{tag.name}</span>
+                      {sel && <span style={{ marginLeft:'auto', color }}>✓</span>}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
+      {tags.length===0 && <span style={{ fontSize:12, color:B.gray }}>No tags — add them in Settings</span>}
     </div>
   )
 }
