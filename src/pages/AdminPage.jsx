@@ -1043,6 +1043,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
                 <tr key={r.id} onClick={()=>onEdit(r)} style={{ cursor:'pointer', borderTop:`1px solid ${B.grayLight}` }}
                   onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
                   onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  <td style={{...S.td,fontSize:12,color:B.gray}}>{r.reservation_code||'—'}</td>
                   <td style={{...S.td,fontSize:15,fontWeight:600}}>{fmtDate(r.date)}</td>
                   <td style={{...S.td,fontSize:15,fontWeight:700}}>{fmtTime(r.time)}</td>
                   <td style={S.td}>
@@ -1053,6 +1054,8 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
                   <td style={{...S.td,fontSize:15,fontWeight:700}}>👥 {r.guests}</td>
                   <td style={{...S.td,fontSize:15,fontWeight:700}}><TableCell r={r} tables={tables}/></td>
                   <td style={S.td}><Badge status={r.status}/></td>
+                  <td style={S.td}><span style={{ fontSize:12, color:B.gray }}>{r.is_manual?'👤 Manual':'🌐 Online'}</span></td>
+                  <td style={{...S.td,maxWidth:150}}>{r.notes?<span title={r.notes} style={{ fontSize:12,color:B.darkSoft,fontStyle:'italic',cursor:'help',display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:140 }}>{r.notes}</span>:<span style={{ color:B.grayLight }}>—</span>}</td>
                 </tr>
               ))}
             </tbody>
