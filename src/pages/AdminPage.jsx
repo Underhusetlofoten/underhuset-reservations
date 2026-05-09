@@ -218,7 +218,7 @@ function MiniCalendar({ selected, onSelect }) {
 
 // ─── Reservation Form ─────────────────────────────────────────────────────────
 
-const EMPTY_FORM = { date:'', time:'', guests:2, first_name:'', last_name:'', email:'', phone:'', notes:'', merged_with:'', status:'confirmed', table_ids:[], is_manual:true }
+const EMPTY_FORM = { date:'', time:'', guests:2, first_name:'', last_name:'', email:'', phone:'', notes:'', merged_with:'', status:'confirmed', table_ids:[], tag_ids:[], is_manual:true }
 
 function TableSelector({ tables, selectedIds, occupiedIds, onChange }) {
   const toggle = (id) => {
@@ -276,7 +276,7 @@ function TableSelector({ tables, selectedIds, occupiedIds, onChange }) {
   )
 }
 
-function ReservationForm({ initial={}, tables=[], onSave, onCancel, loading }) {
+function ReservationForm({ initial={}, tables=[], tags=[], onSave, onCancel, loading }) {
   const initTableIds = initial.table_ids || (initial.table_id ? [initial.table_id] : [])
   const [f,           setF]           = useState({ ...EMPTY_FORM, ...initial, table_ids: initTableIds })
   const [occupiedIds, setOccupiedIds] = useState([])
@@ -326,6 +326,22 @@ function ReservationForm({ initial={}, tables=[], onSave, onCancel, loading }) {
         <textarea value={f.notes||''} onChange={e=>upd('notes',e.target.value)} rows={3}
           style={{...S.input, resize:'vertical'}}
           onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
+      </div>
+      <div style={{ gridColumn:'1/-1' }}>
+        <label style={S.label}>🏷️ Tags</label>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:4 }}>
+          {tags.map(tag => {
+            const selected = (f.tag_ids||[]).includes(tag.id)
+            return (
+              <div key={tag.id} onClick={()=>upd('tag_ids', selected?(f.tag_ids||[]).filter(id=>id!==tag.id):[...(f.tag_ids||[]),tag.id])}
+                style={{ display:'flex', alignItems:'center', gap:4, background:selected?tag.color:tag.color+'22', border:'2px solid '+tag.color, borderRadius:20, padding:'4px 10px', cursor:'pointer', transition:'all .15s' }}>
+                {tag.emoji && <span style={{ fontSize:12 }}>{tag.emoji}</span>}
+                <span style={{ fontSize:12, fontWeight:600, color:selected?'#fff':tag.color }}>{tag.name}</span>
+              </div>
+            )
+          })}
+          {tags.length===0 && <span style={{ fontSize:12, color:B.gray }}>No tags created yet — add them in Settings</span>}
+        </div>
       </div>
       <div style={{ gridColumn:'1/-1' }}>
         <label style={S.label}>🔗 Merged with</label>
@@ -2044,7 +2060,7 @@ function AdminContent({ role }) {
     try {
       const r = await createReservation({ date:f.date, time:f.time, guests:parseInt(f.guests),
         first_name:f.first_name, last_name:f.last_name, email:f.email, phone:f.phone,
-        notes:f.notes, merged_with:f.merged_with||null, status:f.status,
+        notes:f.notes, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status,
         table_id: f.table_ids?.length===1 ? f.table_ids[0] : null,
         table_ids: f.table_ids||[],
         is_manual:true })
@@ -2058,7 +2074,7 @@ function AdminContent({ role }) {
     try {
       await updateReservation(editModal.id, { date:f.date, time:f.time, guests:parseInt(f.guests),
         first_name:f.first_name, last_name:f.last_name, email:f.email, phone:f.phone,
-        notes:f.notes, merged_with:f.merged_with||null, status:f.status,
+        notes:f.notes, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status,
         table_id: f.table_ids?.length===1 ? f.table_ids[0] : null,
         table_ids: f.table_ids||[] })
       if (f.status==='cancelled' && editModal.status!=='cancelled') {
@@ -2182,8 +2198,8 @@ function AdminContent({ role }) {
         )}
       </div>
 
-      {newModal    && <Modal title="New manual reservation" onClose={()=>setNewModal(false)}><ReservationForm tables={tables} onSave={handleCreate} onCancel={()=>setNewModal(false)} loading={saving}/></Modal>}
-      {editModal   && <Modal title="Edit reservation" onClose={()=>setEditModal(null)}><ReservationForm initial={{...editModal, time:fmtTime(editModal.time), table_ids:editModal.table_ids||[]}} tables={tables} onSave={handleUpdate} onCancel={()=>setEditModal(null)} loading={saving}/></Modal>}
+      {newModal    && <Modal title="New manual reservation" onClose={()=>setNewModal(false)}><ReservationForm tables={tables} tags={tags} onSave={handleCreate} onCancel={()=>setNewModal(false)} loading={saving}/></Modal>}
+      {editModal   && <Modal title="Edit reservation" onClose={()=>setEditModal(null)}><ReservationForm initial={{...editModal, time:fmtTime(editModal.time), table_ids:editModal.table_ids||[]}} tables={tables} tags={tags} onSave={handleUpdate} onCancel={()=>setEditModal(null)} loading={saving}/></Modal>}
       {deleteModal && <Confirm message={`Delete reservation for ${deleteModal.first_name} ${deleteModal.last_name} (${fmtDate(deleteModal.date)}, ${fmtTime(deleteModal.time)})?`} onYes={handleDelete} onNo={()=>setDeleteModal(null)}/>}
       {walkInModal && <WalkInModal tables={tables} onSave={handleWalkIn} onClose={()=>setWalkInModal(false)} loading={saving}/>}
     </div>
