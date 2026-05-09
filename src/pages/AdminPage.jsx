@@ -858,16 +858,16 @@ function Dashboard({ reservations, tables, tags=[], onEditReservation, onSeated,
                 {list.sort((a,b)=>a.time.localeCompare(b.time)).map(r=>(
                   <tr key={r.id} onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
                     onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                    <td style={{...S.td, fontWeight:700}}>{fmtTime(r.time)}</td>
+                    <td style={{...S.td, fontWeight:700, fontSize:15}}>{fmtTime(r.time)}</td>
                     <td style={S.td}>
-                      <div style={{ fontWeight:600, cursor:'pointer', color:B.dark }} onClick={()=>onEditReservation(r)}>{r.first_name} {r.last_name}</div>
+                      <div style={{ fontWeight:700, fontSize:15, cursor:'pointer', color:B.dark }} onClick={()=>onEditReservation(r)}>{r.first_name} {r.last_name}</div>
                       {r.merged_with && <div style={{ fontSize:11, color:'#7C3AED', fontWeight:700 }}>🔗 +{r.merged_with}</div>}
                       <TagBadges tagIds={r.tag_ids} tags={tags}/>
                     </td>
                     <td style={S.td}>👥 {r.guests}</td>
-                    <td style={S.td}><TableCell r={r} tables={tables}/></td>
+                    <td style={{...S.td, fontSize:15, fontWeight:600}}><TableCell r={r} tables={tables}/></td>
                     <td style={S.td}><Badge status={r.status}/></td>
-                    <td style={S.td}><QuickActions reservation={r} onSeated={onSeated} onEarlyFree={onEarlyFree} onEdit={r=>onEditReservation(r)}/></td>
+                    <td style={{...S.td, whiteSpace:'nowrap'}}><div style={{ display:'flex', gap:4 }}><QuickActions reservation={r} onSeated={onSeated} onEarlyFree={onEarlyFree} onEdit={r=>onEditReservation(r)}/>{!['no_show','cancelled','completed'].includes(r.status)&&<Btn size="sm" variant="danger" onClick={()=>updateReservation(r.id,{status:'no_show'}).then(onRefresh)} style={{ fontSize:10, padding:'4px 8px' }}>NS</Btn>}</div></td>
                   </tr>
                 ))}
               </tbody>
