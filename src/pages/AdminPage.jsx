@@ -1905,6 +1905,11 @@ function SettingsTab({ settings, onSave, tags=[], onTagsChange }) {
           })}
         </div>
 
+        <div style={S.card}>
+          <h3 style={{ fontSize:15, fontWeight:700, color:B.dark, marginBottom:16 }}>🏷️ Tags</h3>
+          <TagManager tags={tags} onTagsChange={onTagsChange}/>
+        </div>
+
         <div><Btn onClick={save}>{saved?'✓ Saved':'Save changes'}</Btn></div>
       </div>
     </div>
