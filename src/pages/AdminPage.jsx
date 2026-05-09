@@ -39,7 +39,7 @@ function tableLabel(r, tables) {
 function TableCell({ r, tables }) {
   const label = tableLabel(r, tables)
   if (!label) return <span style={{ color:B.grayLight }}>—</span>
-  return <span style={{ background:B.blueLight, color:B.blue, padding:'2px 8px', borderRadius:6, fontSize:12, fontWeight:600 }}>{label}</span>
+  return <span style={{ background:B.blueLight, color:B.blue, padding:'2px 8px', borderRadius:6, fontSize:15, fontWeight:700 }}>{label}</span>
 }
 function timeToH(t) {
   if (!t) return 0
@@ -1044,7 +1044,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
                   <td style={{...S.td,fontSize:15,fontWeight:600}}>{fmtDate(r.date)}</td>
                   <td style={{...S.td,fontSize:15,fontWeight:700}}>{fmtTime(r.time)}</td>
                   <td style={S.td}>
-                    <div style={{ fontWeight:600, cursor:'pointer', color:B.dark }} onClick={()=>onEdit(r)}>{r.first_name} {r.last_name||''}</div>
+                    <div style={{ fontWeight:700, fontSize:15, cursor:'pointer', color:B.dark }} onClick={()=>onEdit(r)}>{r.first_name} {r.last_name||''}</div>
                     {r.merged_with && <div style={{ fontSize:11, color:'#7C3AED', fontWeight:700 }}>🔗 +{r.merged_with}</div>}
                     <TagBadges tagIds={r.tag_ids} tags={tags}/>
                   </td>
