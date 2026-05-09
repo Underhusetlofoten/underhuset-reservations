@@ -860,7 +860,7 @@ function Dashboard({ reservations, tables, tags=[], onEditReservation, onSeated,
                     onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                     <td style={{...S.td, fontWeight:700}}>{fmtTime(r.time)}</td>
                     <td style={S.td}>
-                      <div style={{ fontWeight:600 }}>{r.first_name} {r.last_name}</div>
+                      <div style={{ fontWeight:600, cursor:'pointer', color:B.dark }} onClick={()=>onEditReservation(r)}>{r.first_name} {r.last_name}</div>
                       {r.merged_with && <div style={{ fontSize:11, color:'#7C3AED', fontWeight:700 }}>🔗 +{r.merged_with}</div>}
                       <TagBadges tagIds={r.tag_ids} tags={tags}/>
                     </td>
@@ -1044,7 +1044,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
                   <td style={S.td}>{fmtDate(r.date)}</td>
                   <td style={S.td}>{fmtTime(r.time)}</td>
                   <td style={S.td}>
-                    <div style={{ fontWeight:600 }}>{r.first_name} {r.last_name||''}</div>
+                    <div style={{ fontWeight:600, cursor:'pointer', color:B.dark }} onClick={()=>onEdit(r)}>{r.first_name} {r.last_name||''}</div>
                     {r.merged_with && <div style={{ fontSize:11, color:'#7C3AED', fontWeight:700 }}>🔗 +{r.merged_with}</div>}
                     <TagBadges tagIds={r.tag_ids} tags={tags}/>
                   </td>
@@ -1089,7 +1089,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
           </thead>
           <tbody>
             {filtered.length===0&&<tr><td colSpan={9} style={{...S.td,textAlign:'center',color:B.gray,padding:40}}>No results</td></tr>}
-            {filtered.map(r=>(
+            {view!=='month' && filtered.map(r=>(
               <tr key={r.id} onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                 <td style={{...S.td,fontWeight:700,fontSize:12,color:B.gray}}>{r.reservation_code||'—'}</td>
