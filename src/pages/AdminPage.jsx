@@ -852,7 +852,7 @@ function Dashboard({ reservations, tables, tags=[], onEditReservation, onSeated,
           <div style={{ ...S.card, padding:0, overflow:'hidden' }}>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
-                <tr>{['Time','Name','Guests','Table','Status',''].map(h=><th key={h} style={S.th}>{h}</th>)}</tr>
+                <tr>{['Time','Name','Guests','Table','Status','Source','Notes',''].map(h=><th key={h} style={S.th}>{h}</th>)}</tr>
               </thead>
               <tbody>
                 {list.sort((a,b)=>a.time.localeCompare(b.time)).map(r=>(
@@ -867,6 +867,8 @@ function Dashboard({ reservations, tables, tags=[], onEditReservation, onSeated,
                     <td style={{...S.td, fontSize:15, fontWeight:700}}>👥 {r.guests}</td>
                     <td style={{...S.td, fontSize:15, fontWeight:700}}><TableCell r={r} tables={tables}/></td>
                     <td style={S.td}><Badge status={r.status}/></td>
+                    <td style={S.td}><span style={{ fontSize:12, color:B.gray }}>{r.is_manual?'👤 Manual':'🌐 Online'}</span></td>
+                    <td style={{...S.td, maxWidth:150}}>{r.notes?<span title={r.notes} style={{ fontSize:12, color:B.darkSoft, fontStyle:'italic', cursor:'help', display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:140 }}>{r.notes}</span>:<span style={{ color:B.grayLight }}>—</span>}</td>
                     <td style={{...S.td, whiteSpace:'nowrap'}}><div style={{ display:'flex', gap:4 }}><QuickActions reservation={r} onSeated={onSeated} onEarlyFree={onEarlyFree} onEdit={r=>onEditReservation(r)}/>{!['no_show','cancelled','completed'].includes(r.status)&&<Btn size="sm" variant="danger" onClick={()=>updateReservation(r.id,{status:'no_show'}).then(onRefresh)} style={{ fontSize:10, padding:'4px 8px' }}>NS</Btn>}</div></td>
                   </tr>
                 ))}
@@ -1030,7 +1032,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
         <div style={{ ...S.card, padding:0, overflow:'auto', marginTop:16 }}>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead><tr style={{ background:'#FAFAFA' }}>
-              {['Date','Time','Name','Guests','Table','Status'].map(h=><th key={h} style={S.th}>{h}</th>)}
+              {['Code','Date','Time','Name','Guests','Table','Status','Source','Notes'].map(h=><th key={h} style={S.th}>{h}</th>)}
             </tr></thead>
             <tbody>
               {reservations.filter(r=>{
