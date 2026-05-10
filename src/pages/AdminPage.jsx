@@ -862,7 +862,7 @@ function Dashboard({ reservations, tables, tags=[], onEditReservation, onSeated,
           <div style={{ ...S.card, padding:0, overflow:'hidden' }}>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
-                <tr>{['Time','Name','Guests','Table','Status','Source','Notes',''].map(h=><th key={h} style={S.th}>{h}</th>)}</tr>
+                <tr>{['Time','Name','Guests','Table','Status'].map(h=><th key={h} style={S.th}>{h}</th>)}<th className="hide-mobile" style={S.th}>Source</th><th className="hide-mobile" style={S.th}>Notes</th><th style={S.th}></th></tr>
               </thead>
               <tbody>
                 {list.sort((a,b)=>a.time.localeCompare(b.time)).map(r=>(
@@ -877,8 +877,8 @@ function Dashboard({ reservations, tables, tags=[], onEditReservation, onSeated,
                     <td style={{...S.td, fontSize:15, fontWeight:700}}>👥 {r.guests}</td>
                     <td style={{...S.td, fontSize:15, fontWeight:700}}><TableCell r={r} tables={tables}/></td>
                     <td style={S.td}><Badge status={r.status}/></td>
-                    <td style={S.td}><span style={{ fontSize:12, color:B.gray }}>{r.is_manual?'👤 Manual':'🌐 Online'}</span></td>
-                    <td style={{...S.td, maxWidth:150}}>{r.notes?<span title={r.notes} style={{ fontSize:12, color:B.darkSoft, fontStyle:'italic', cursor:'help', display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:140 }}>{r.notes}</span>:<span style={{ color:B.grayLight }}>—</span>}</td>
+                    <td className="hide-mobile" style={S.td}><span style={{ fontSize:12, color:B.gray }}>{r.is_manual?'👤 Manual':'🌐 Online'}</span></td>
+                    <td className="hide-mobile" style={{...S.td, maxWidth:150}}>{r.notes?<span title={r.notes} style={{ fontSize:12, color:B.darkSoft, fontStyle:'italic', cursor:'help', display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:140 }}>{r.notes}</span>:<span style={{ color:B.grayLight }}>—</span>}</td>
                     <td style={{...S.td, whiteSpace:'nowrap'}}><div style={{ display:'flex', gap:4 }}><QuickActions reservation={r} onSeated={onSeated} onEarlyFree={onEarlyFree} onEdit={r=>onEditReservation(r)}/>{!['no_show','cancelled','completed'].includes(r.status)&&<Btn size="sm" variant="danger" onClick={()=>updateReservation(r.id,{status:'no_show'}).then(onRefresh)} style={{ fontSize:10, padding:'4px 8px' }}>NS</Btn>}</div></td>
                   </tr>
                 ))}
@@ -1055,7 +1055,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
         <div style={{ ...S.card, padding:0, overflow:'auto', marginTop:16 }}>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead><tr style={{ background:'#FAFAFA' }}>
-              {['Code','Date','Time','Name','Guests','Table','Status','Source','Notes'].map(h=><th key={h} style={S.th}>{h}</th>)}
+              <th className="hide-mobile" style={S.th}>Code</th>{['Date','Time','Name','Guests','Table','Status'].map(h=><th key={h} style={S.th}>{h}</th>)}<th className="hide-mobile" style={S.th}>Source</th><th className="hide-mobile" style={S.th}>Notes</th>
             </tr></thead>
             <tbody>
               {reservations.filter(r=>{
@@ -1066,7 +1066,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
                 <tr key={r.id} onClick={()=>onEdit(r)} style={{ cursor:'pointer', borderTop:`1px solid ${B.grayLight}` }}
                   onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
                   onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                  <td style={{...S.td,fontSize:12,color:B.gray}}>{r.reservation_code||'—'}</td>
+                  <td className="hide-mobile" style={{...S.td,fontSize:12,color:B.gray}}>{r.reservation_code||'—'}</td>
                   <td style={{...S.td,fontSize:15,fontWeight:600}}>{fmtDate(r.date)}</td>
                   <td style={{...S.td,fontSize:15,fontWeight:700}}>{fmtTime(r.time)}</td>
                   <td style={S.td}>
@@ -1077,8 +1077,8 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
                   <td style={{...S.td,fontSize:15,fontWeight:700}}>👥 {r.guests}</td>
                   <td style={{...S.td,fontSize:15,fontWeight:700}}><TableCell r={r} tables={tables}/></td>
                   <td style={S.td}><Badge status={r.status}/></td>
-                  <td style={S.td}><span style={{ fontSize:12, color:B.gray }}>{r.is_manual?'👤 Manual':'🌐 Online'}</span></td>
-                  <td style={{...S.td,maxWidth:150}}>{r.notes?<span title={r.notes} style={{ fontSize:12,color:B.darkSoft,fontStyle:'italic',cursor:'help',display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:140 }}>{r.notes}</span>:<span style={{ color:B.grayLight }}>—</span>}</td>
+                  <td className="hide-mobile" style={S.td}><span style={{ fontSize:12, color:B.gray }}>{r.is_manual?'👤 Manual':'🌐 Online'}</span></td>
+                  <td className="hide-mobile" style={{...S.td,maxWidth:150}}>{r.notes?<span title={r.notes} style={{ fontSize:12,color:B.darkSoft,fontStyle:'italic',cursor:'help',display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:140 }}>{r.notes}</span>:<span style={{ color:B.grayLight }}>—</span>}</td>
                 </tr>
               ))}
             </tbody>
@@ -1113,14 +1113,14 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
       {view!=='month' && <div style={{ ...S.card, padding:0, overflow:'auto' }}>
         <table style={{ width:'100%', borderCollapse:'collapse', minWidth:800 }}>
           <thead>
-            <tr>{['Code','Date','Time','Name','Guests','Table','Status','Source','Notes',''].map(h=><th key={h} style={S.th}>{h}</th>)}</tr>
+            <tr><th className="hide-mobile" style={S.th}>Code</th>{['Date','Time','Name','Guests','Table','Status'].map(h=><th key={h} style={S.th}>{h}</th>)}<th className="hide-mobile" style={S.th}>Source</th><th className="hide-mobile" style={S.th}>Notes</th><th style={S.th}></th></tr>
           </thead>
           <tbody>
             {filtered.length===0&&<tr><td colSpan={9} style={{...S.td,textAlign:'center',color:B.gray,padding:40}}>No results</td></tr>}
             {view!=='month' && filtered.map(r=>(
               <tr key={r.id} onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                <td style={{...S.td,fontWeight:700,fontSize:12,color:B.gray}}>{r.reservation_code||'—'}</td>
+                <td className="hide-mobile" style={{...S.td,fontWeight:700,fontSize:12,color:B.gray}}>{r.reservation_code||'—'}</td>
                 <td style={{...S.td,fontWeight:600,fontSize:15}}>{fmtDate(r.date)}</td>
                 <td style={{...S.td,fontWeight:700,fontSize:15}}>{fmtTime(r.time)}</td>
                 <td style={S.td}>
@@ -2060,6 +2060,8 @@ const MOBILE_CSS = `
   @media (max-width: 768px) {
     .desktop-tabs { display: none  !important; }
     .mobile-menu  { display: block !important; }
+    .hide-mobile  { display: none  !important; }
+    table { font-size: 13px; }
   }
 `
 
