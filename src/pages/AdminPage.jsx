@@ -164,7 +164,7 @@ function QuickActions({ reservation, onSeated, onEarlyFree, onEdit }) {
           🚪 Early free
         </Btn>
       )}
-      <Btn size="sm" variant="ghost" onClick={()=>onEdit(reservation)}>Edit</Btn>
+
     </div>
   )
 }
@@ -1124,7 +1124,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
                 <td style={{...S.td,fontWeight:600,fontSize:15}}>{fmtDate(r.date)}</td>
                 <td style={{...S.td,fontWeight:700,fontSize:15}}>{fmtTime(r.time)}</td>
                 <td style={S.td}>
-                  <div style={{ fontWeight:700, fontSize:15 }}>{r.first_name} {r.last_name}</div>
+                  <div style={{ fontWeight:700, fontSize:15, cursor:'pointer' }} onClick={()=>onEdit(r)}>{r.first_name} {r.last_name}</div>
                   <div style={{ fontSize:11, color:B.gray }}>{r.email}</div>
                   {r.merged_with && <div style={{ fontSize:11, color:'#7C3AED', fontWeight:700 }}>🔗 +{r.merged_with}</div>}
                   <TagBadges tagIds={r.tag_ids} tags={tags}/>
@@ -1138,7 +1138,6 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
                 </td>
                 <td style={{...S.td, whiteSpace:'nowrap'}}>
                   <div style={{ display:'flex', gap:6 }}>
-                    <QuickActions reservation={r} onSeated={onSeated} onEarlyFree={onEarlyFree} onEdit={onEdit}/>
                     <Btn size="sm" variant="danger" onClick={()=>onDelete(r)}>×</Btn>
                   </div>
                 </td>
