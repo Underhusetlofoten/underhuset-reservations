@@ -299,7 +299,7 @@ function ReservationForm({ initial={}, tables=[], tags=[], onSave, onCancel, loa
     })
   }, [f.date, f.time])
 
-  const valid = f.date && f.time && f.guests && f.first_name && f.email && f.phone
+  const valid = f.date && (f.time || f.custom_time) && f.guests && f.first_name && f.email && f.phone
 
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
@@ -2179,9 +2179,9 @@ function AdminContent({ role }) {
   const handleCreate = async (f) => {
     setSaving(true)
     try {
-      const r = await createReservation({ date:f.date, time:f.time, guests:parseInt(f.guests),
+      const r = await createReservation({ date:f.date, time:f.custom_time||f.time, guests:parseInt(f.guests),
         first_name:f.first_name, last_name:f.last_name, email:f.email, phone:f.phone,
-        notes:f.notes, contact_person:f.contact_person||null, custom_time:f.custom_time||null, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status,
+        notes:f.notes, contact_person:f.contact_person||null, custom_time:f.custom_time||null, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status, time: f.custom_time ? f.custom_time : f.time,
         table_id: f.table_ids?.length===1 ? f.table_ids[0] : null,
         table_ids: f.table_ids||[],
         is_manual:true })
@@ -2193,9 +2193,9 @@ function AdminContent({ role }) {
   const handleUpdate = async (f) => {
     setSaving(true)
     try {
-      await updateReservation(editModal.id, { date:f.date, time:f.time, guests:parseInt(f.guests),
+      await updateReservation(editModal.id, { date:f.date, time:f.custom_time||f.time, guests:parseInt(f.guests),
         first_name:f.first_name, last_name:f.last_name, email:f.email, phone:f.phone,
-        notes:f.notes, contact_person:f.contact_person||null, custom_time:f.custom_time||null, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status,
+        notes:f.notes, contact_person:f.contact_person||null, custom_time:f.custom_time||null, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status, time: f.custom_time ? f.custom_time : f.time,
         table_id: f.table_ids?.length===1 ? f.table_ids[0] : null,
         table_ids: f.table_ids||[] })
       if (f.status==='cancelled' && editModal.status!=='cancelled') {
