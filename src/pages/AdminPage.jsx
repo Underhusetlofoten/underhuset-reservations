@@ -1111,7 +1111,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
         </div>
       </div>
       {view!=='month' && <div style={{ ...S.card, padding:0, overflow:'auto' }}>
-        <table style={{ width:'100%', borderCollapse:'collapse', minWidth:800 }}>
+        <table className="res-table" style={{ width:'100%', borderCollapse:'collapse', minWidth:800 }}>
           <thead>
             <tr><th className="hide-mobile" style={S.th}>Code</th>{['Date','Time','Name','Guests','Table','Status'].map(h=><th key={h} style={S.th}>{h}</th>)}<th className="hide-mobile" style={S.th}>Source</th><th className="hide-mobile" style={S.th}>Notes</th><th style={S.th}></th></tr>
           </thead>
@@ -2064,6 +2064,7 @@ const MOBILE_CSS = `
     .hide-mobile   { display: none  !important; }
     table { font-size: 13px; }
     table td, table th { padding: 6px 4px !important; }
+    .res-table { min-width: 0 !important; width: 100% !important; }
   }
 `
 
