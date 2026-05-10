@@ -2255,7 +2255,7 @@ function AdminContent({ role }) {
           <span style={{ fontSize:11, color:'rgba(255,255,255,.4)', letterSpacing:'.06em', textTransform:'uppercase', marginLeft:8 }}>Admin</span>
         </div>
         <style>{MOBILE_CSS}</style>
-        <button onClick={()=>supabase.auth.signOut()} style={{ background:'rgba(255,255,255,.1)', border:'none', borderRadius:8, color:'rgba(255,255,255,.7)', fontSize:13, fontWeight:600, padding:'6px 14px', cursor:'pointer' }}>Sign out</button>
+        <button onClick={()=>supabase.auth.signOut()} className="desktop-tabs" style={{ background:'rgba(255,255,255,.1)', border:'none', borderRadius:8, color:'rgba(255,255,255,.7)', fontSize:13, fontWeight:600, padding:'6px 14px', cursor:'pointer' }}>Sign out</button>
         {/* Desktop tabs */}
         <div className="desktop-tabs" style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
           {TABS.filter(t => t.id !== 'settings' || role === 'admin').map(t=>(
@@ -2286,11 +2286,16 @@ function AdminContent({ role }) {
                   {t.id==='waitlist'&&waitlistCount>0&&<span style={{ background:B.red, color:'#fff', borderRadius:10, padding:'1px 6px', fontSize:11, fontWeight:700, marginLeft:'auto' }}>{waitlistCount}</span>}
                 </button>
               ))}
+              <div style={{ borderTop:'1px solid rgba(255,255,255,.1)', marginTop:8, paddingTop:8 }}>
+                <button onClick={()=>{ supabase.auth.signOut(); setMobileMenu(false) }} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', background:'transparent', border:'none', borderRadius:8, cursor:'pointer', padding:'12px 16px', color:'rgba(255,255,255,.6)', fontSize:15 }}>
+                  🚪 Sign out
+                </button>
+              </div>
             </div>
           )}
         </div>
         <div style={{ display:'flex', gap:8 }}>
-          <button onClick={loadAll} style={{ background:'none', border:`1px solid rgba(255,255,255,.2)`, borderRadius:8, cursor:'pointer', padding:'4px 12px', color:'rgba(255,255,255,.7)', fontSize:12 }}>↻ Refresh</button>
+          <button onClick={loadAll} className="desktop-tabs" style={{ background:'none', border:'1px solid rgba(255,255,255,.2)', borderRadius:8, cursor:'pointer', padding:'4px 12px', color:'rgba(255,255,255,.7)', fontSize:12 }}>↻ Refresh</button>
           <a href="/" target="_blank" style={{ background:'none', border:`1px solid rgba(255,255,255,.2)`, borderRadius:8, cursor:'pointer', padding:'4px 12px', color:'rgba(255,255,255,.7)', fontSize:12, textDecoration:'none' }}>🌐 Web</a>
         </div>
       </div>
