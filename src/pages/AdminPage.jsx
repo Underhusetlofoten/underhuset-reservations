@@ -5,6 +5,7 @@ import StatsTab from './StatsTab.jsx'
 import {
   getReservations, createReservation, updateReservation, deleteReservation, getDeletedReservations, restoreReservation,
   getTags, createTag, updateTag, deleteTag,
+  getTableGroups, createTableGroup, updateTableGroup, deleteTableGroup,
   seatReservation, earlyFreeReservation,
   getTables, createTable, updateTable, deleteTable,
   getSettings, setSetting, getOccupiedTablesForSlot,
