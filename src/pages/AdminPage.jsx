@@ -1132,8 +1132,8 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
                 <td style={{...S.td,fontSize:15,fontWeight:700}}>👥 {r.guests}</td>
                 <td style={{...S.td,fontSize:15,fontWeight:700}}><TableCell r={r} tables={tables}/></td>
                 <td style={S.td}><Badge status={r.status}/></td>
-                <td style={S.td}><span style={{ fontSize:11, color:B.gray }}>{r.is_manual?'👤 Manual':'🌐 Online'}</span></td>
-                <td style={{...S.td, maxWidth:180}}>
+                <td className="hide-mobile" style={S.td}><span style={{ fontSize:11, color:B.gray }}>{r.is_manual?'👤 Manual':'🌐 Online'}</span></td>
+                <td className="hide-mobile" style={{...S.td, maxWidth:180}}>
                   <ExpandableNote note={r.notes}/>
                 </td>
                 <td style={{...S.td, whiteSpace:'nowrap'}}>
