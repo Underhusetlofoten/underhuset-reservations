@@ -854,7 +854,7 @@ function Dashboard({ reservations, tables, tags=[], onEditReservation, onSeated,
         <Stat icon="🍽️"  value={activeTables}    label="Active tables" />
       </div>
 
-      <div className="desktop-tabs"><DiagramView todayRes={todayRes} tables={tables} onEditReservation={onEditReservation} onRefresh={onRefresh}/></div>
+      <div className="desktop-only"><DiagramView todayRes={todayRes} tables={tables} onEditReservation={onEditReservation} onRefresh={onRefresh}/></div>
 
       {[['☀️ Lunch', lunch], ['🌙 Dinner', dinner]].map(([label, list]) => list.length > 0 && (
         <div key={label} style={{ marginBottom:24 }}>
@@ -2054,13 +2054,16 @@ function SettingsTab({ settings, onSave, tags=[], onTagsChange }) {
 
 // ─── Main Admin ───────────────────────────────────────────────────────────────
 const MOBILE_CSS = `
-  .desktop-tabs { display: flex !important; }
-  .mobile-menu  { display: none  !important; }
+  .desktop-tabs  { display: flex  !important; }
+  .desktop-only  { display: block !important; }
+  .mobile-menu   { display: none  !important; }
   @media (max-width: 768px) {
-    .desktop-tabs { display: none  !important; }
-    .mobile-menu  { display: block !important; }
-    .hide-mobile  { display: none  !important; }
+    .desktop-tabs  { display: none  !important; }
+    .desktop-only  { display: none  !important; }
+    .mobile-menu   { display: block !important; }
+    .hide-mobile   { display: none  !important; }
     table { font-size: 13px; }
+    table td, table th { padding: 6px 4px !important; }
   }
 `
 
