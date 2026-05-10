@@ -218,7 +218,7 @@ function MiniCalendar({ selected, onSelect }) {
 
 // ─── Reservation Form ─────────────────────────────────────────────────────────
 
-const EMPTY_FORM = { date:'', time:'', guests:2, first_name:'', last_name:'', contact_person:'', email:'', phone:'', notes:'', merged_with:'', status:'confirmed', table_ids:[], tag_ids:[], is_manual:true }
+const EMPTY_FORM = { date:'', time:'', custom_time:'', guests:2, first_name:'', last_name:'', contact_person:'', email:'', phone:'', notes:'', merged_with:'', status:'confirmed', table_ids:[], tag_ids:[], is_manual:true }
 
 function TableSelector({ tables, selectedIds, occupiedIds, onChange }) {
   const toggle = (id) => {
@@ -313,6 +313,15 @@ function ReservationForm({ initial={}, tables=[], tags=[], onSave, onCancel, loa
           { value:'', label:'Select…' },
           ...ALL_TIMES.map(t=>({ value:t+':00', label:t }))
         ]}/>
+        <div style={{ marginTop:6, display:'flex', alignItems:'center', gap:8 }}>
+          <input type="checkbox" id="custom_time_cb" checked={!!f.custom_time} onChange={e=>upd('custom_time', e.target.checked ? (f.time||'18:00') : '')} style={{ cursor:'pointer' }}/>
+          <label htmlFor="custom_time_cb" style={{ fontSize:12, color:B.gray, cursor:'pointer' }}>Custom time (outside opening hours)</label>
+        </div>
+        {f.custom_time && (
+          <input type="time" value={f.custom_time} onChange={e=>upd('custom_time',e.target.value)}
+            style={{...S.input, marginTop:4, width:'auto'}}
+            onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
+        )}
       </div>
       <div>
         <label style={S.label}>Guests *</label>
@@ -2172,7 +2181,7 @@ function AdminContent({ role }) {
     try {
       const r = await createReservation({ date:f.date, time:f.time, guests:parseInt(f.guests),
         first_name:f.first_name, last_name:f.last_name, email:f.email, phone:f.phone,
-        notes:f.notes, contact_person:f.contact_person||null, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status,
+        notes:f.notes, contact_person:f.contact_person||null, custom_time:f.custom_time||null, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status,
         table_id: f.table_ids?.length===1 ? f.table_ids[0] : null,
         table_ids: f.table_ids||[],
         is_manual:true })
@@ -2186,7 +2195,7 @@ function AdminContent({ role }) {
     try {
       await updateReservation(editModal.id, { date:f.date, time:f.time, guests:parseInt(f.guests),
         first_name:f.first_name, last_name:f.last_name, email:f.email, phone:f.phone,
-        notes:f.notes, contact_person:f.contact_person||null, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status,
+        notes:f.notes, contact_person:f.contact_person||null, custom_time:f.custom_time||null, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status,
         table_id: f.table_ids?.length===1 ? f.table_ids[0] : null,
         table_ids: f.table_ids||[] })
       if (f.status==='cancelled' && editModal.status!=='cancelled') {
