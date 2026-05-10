@@ -854,7 +854,7 @@ function Dashboard({ reservations, tables, tags=[], onEditReservation, onSeated,
         <Stat icon="🍽️"  value={activeTables}    label="Active tables" />
       </div>
 
-      <DiagramView todayRes={todayRes} tables={tables} onEditReservation={onEditReservation} onRefresh={onRefresh}/>
+      <div className="desktop-tabs"><DiagramView todayRes={todayRes} tables={tables} onEditReservation={onEditReservation} onRefresh={onRefresh}/></div>
 
       {[['☀️ Lunch', lunch], ['🌙 Dinner', dinner]].map(([label, list]) => list.length > 0 && (
         <div key={label} style={{ marginBottom:24 }}>
