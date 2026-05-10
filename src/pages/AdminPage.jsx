@@ -326,6 +326,7 @@ function ReservationForm({ initial={}, tables=[], tags=[], onSave, onCancel, loa
       </div>
       <div><Input label="First name *" value={f.first_name} onChange={v=>upd('first_name',v)} /></div>
       <div><Input label="Last name"  value={f.last_name}  onChange={v=>upd('last_name',v)} /></div>
+      <div style={{ gridColumn:'1/-1' }}><Input label="Contact person" value={f.contact_person||''} onChange={v=>upd('contact_person',v)} /></div>
       <div style={{ gridColumn:'1/-1' }}><Input label="Email *" type="email" value={f.email} onChange={v=>upd('email',v)} /></div>
       <div style={{ gridColumn:'1/-1' }}><Input label="Phone *" type="tel" value={f.phone} onChange={v=>upd('phone',v)} /></div>
       <div style={{ gridColumn:'1/-1' }}>
