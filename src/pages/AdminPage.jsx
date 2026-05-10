@@ -218,7 +218,7 @@ function MiniCalendar({ selected, onSelect }) {
 
 // ─── Reservation Form ─────────────────────────────────────────────────────────
 
-const EMPTY_FORM = { date:'', time:'', guests:2, first_name:'', last_name:'', email:'', phone:'', notes:'', merged_with:'', status:'confirmed', table_ids:[], tag_ids:[], is_manual:true }
+const EMPTY_FORM = { date:'', time:'', guests:2, first_name:'', last_name:'', contact_person:'', email:'', phone:'', notes:'', merged_with:'', status:'confirmed', table_ids:[], tag_ids:[], is_manual:true }
 
 function TableSelector({ tables, selectedIds, occupiedIds, onChange }) {
   const toggle = (id) => {
@@ -890,6 +890,19 @@ function Dashboard({ reservations, tables, tags=[], onEditReservation, onSeated,
 
 // ─── Tab: Reservations ────────────────────────────────────────────────────────
 
+function ExpandableNote({ note }) {
+  const [expanded, setExpanded] = useState(false)
+  if (!note) return <span style={{ color:'#E2E6E6' }}>—</span>
+  return (
+    <div onClick={e=>{ e.stopPropagation(); setExpanded(v=>!v) }} style={{ cursor:'pointer' }}>
+      {expanded
+        ? <span style={{ fontSize:12, color:'#3C4242', fontStyle:'italic' }}>{note}</span>
+        : <span title={note} style={{ fontSize:12, color:'#8A8F8F', fontStyle:'italic', display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:170 }}>{note}</span>
+      }
+    </div>
+  )
+}
+
 function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDelete, onSeated, onEarlyFree }) {
   const [dateFilter,   setDateFilter]   = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -1111,7 +1124,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
                 <td style={S.td}><Badge status={r.status}/></td>
                 <td style={S.td}><span style={{ fontSize:11, color:B.gray }}>{r.is_manual?'👤 Manual':'🌐 Online'}</span></td>
                 <td style={{...S.td, maxWidth:180}}>
-                  {r.notes?<span title={r.notes} style={{ fontSize:12, color:B.darkSoft, fontStyle:'italic', cursor:'help', display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:170 }}>{r.notes}</span>:<span style={{ color:B.grayLight }}>—</span>}
+                  <ExpandableNote note={r.notes}/>
                 </td>
                 <td style={{...S.td, whiteSpace:'nowrap'}}>
                   <div style={{ display:'flex', gap:6 }}>
@@ -2158,7 +2171,7 @@ function AdminContent({ role }) {
     try {
       const r = await createReservation({ date:f.date, time:f.time, guests:parseInt(f.guests),
         first_name:f.first_name, last_name:f.last_name, email:f.email, phone:f.phone,
-        notes:f.notes, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status,
+        notes:f.notes, contact_person:f.contact_person||null, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status,
         table_id: f.table_ids?.length===1 ? f.table_ids[0] : null,
         table_ids: f.table_ids||[],
         is_manual:true })
@@ -2172,7 +2185,7 @@ function AdminContent({ role }) {
     try {
       await updateReservation(editModal.id, { date:f.date, time:f.time, guests:parseInt(f.guests),
         first_name:f.first_name, last_name:f.last_name, email:f.email, phone:f.phone,
-        notes:f.notes, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status,
+        notes:f.notes, contact_person:f.contact_person||null, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status,
         table_id: f.table_ids?.length===1 ? f.table_ids[0] : null,
         table_ids: f.table_ids||[] })
       if (f.status==='cancelled' && editModal.status!=='cancelled') {
