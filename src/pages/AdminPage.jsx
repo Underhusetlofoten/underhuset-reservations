@@ -296,7 +296,7 @@ function TableSelector({ tables, groups=[], selectedIds, occupiedIds, onChange }
   )
 }
 
-function ReservationForm({ initial={}, tables=[], tags=[], onSave, onCancel, loading }) {
+function ReservationForm({ initial={}, tables=[], tags=[], groups=[], onSave, onCancel, loading }) {
   const initTableIds = initial.table_ids || (initial.table_id ? [initial.table_id] : [])
   const initTagIds = (() => {
     try {
@@ -2381,8 +2381,8 @@ function AdminContent({ role }) {
         )}
       </div>
 
-      {newModal    && <Modal title="New manual reservation" onClose={()=>setNewModal(false)}><ReservationForm tables={tables} tags={tags} onSave={handleCreate} onCancel={()=>setNewModal(false)} loading={saving}/></Modal>}
-      {editModal   && <Modal title="Edit reservation" onClose={()=>setEditModal(null)}><ReservationForm initial={{...editModal, time:fmtTime(editModal.time), table_ids:editModal.table_ids||[]}} tables={tables} tags={tags} onSave={handleUpdate} onCancel={()=>setEditModal(null)} loading={saving}/></Modal>}
+      {newModal    && <Modal title="New manual reservation" onClose={()=>setNewModal(false)}><ReservationForm tables={tables} tags={tags} groups={groups} onSave={handleCreate} onCancel={()=>setNewModal(false)} loading={saving}/></Modal>}
+      {editModal   && <Modal title="Edit reservation" onClose={()=>setEditModal(null)}><ReservationForm initial={{...editModal, time:fmtTime(editModal.time), table_ids:editModal.table_ids||[]}} tables={tables} tags={tags} groups={groups} onSave={handleUpdate} onCancel={()=>setEditModal(null)} loading={saving}/></Modal>}
       {deleteModal && <Confirm message={`Delete reservation for ${deleteModal.first_name} ${deleteModal.last_name} (${fmtDate(deleteModal.date)}, ${fmtTime(deleteModal.time)})?`} onYes={handleDelete} onNo={()=>setDeleteModal(null)}/>}
       {walkInModal && <WalkInModal tables={tables} onSave={handleWalkIn} onClose={()=>setWalkInModal(false)} loading={saving}/>}
     </div>
