@@ -46,7 +46,10 @@ function TableCell({ r, tables, groups=[] }) {
     (g.table_ids||[]).length === tids.length &&
     (g.table_ids||[]).every(id => tids.includes(id))
   )
-  if (matchGroup) return <span style={{ background:'#EDE9FE', color:'#7C3AED', padding:'2px 10px', borderRadius:6, fontSize:15, fontWeight:700 }}>🪑 {matchGroup.name}</span>
+  if (matchGroup) {
+    const tableNums = (matchGroup.table_ids||[]).map(id=>tables.find(t=>t.id===id)?.name).filter(Boolean).join(', ')
+    return <span title={`Tables: ${tableNums}`} style={{ background:'#EDE9FE', color:'#7C3AED', padding:'2px 10px', borderRadius:6, fontSize:15, fontWeight:700, cursor:'help' }}>🪑 {matchGroup.name} <span style={{ fontSize:11, opacity:0.7 }}>({tableNums})</span></span>
+  }
   const label = tableLabel(r, tables)
   if (!label) return <span style={{ color:B.grayLight }}>—</span>
   return <span style={{ background:B.blueLight, color:B.blue, padding:'2px 8px', borderRadius:6, fontSize:15, fontWeight:700 }}>{label}</span>
