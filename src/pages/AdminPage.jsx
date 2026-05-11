@@ -37,7 +37,16 @@ function tableLabel(r, tables) {
   return null
 }
 
-function TableCell({ r, tables }) {
+function TableCell({ r, tables, groups=[] }) {
+  // Check if selected tables match a group
+  const tids = r.table_ids || (r.table_id ? [r.table_id] : [])
+  const matchGroup = groups.find(g =>
+    g.is_active &&
+    (g.table_ids||[]).length > 0 &&
+    (g.table_ids||[]).length === tids.length &&
+    (g.table_ids||[]).every(id => tids.includes(id))
+  )
+  if (matchGroup) return <span style={{ background:'#EDE9FE', color:'#7C3AED', padding:'2px 10px', borderRadius:6, fontSize:15, fontWeight:700 }}>🪑 {matchGroup.name}</span>
   const label = tableLabel(r, tables)
   if (!label) return <span style={{ color:B.grayLight }}>—</span>
   return <span style={{ background:B.blueLight, color:B.blue, padding:'2px 8px', borderRadius:6, fontSize:15, fontWeight:700 }}>{label}</span>
@@ -810,7 +819,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
 }
 
 
-function Dashboard({ reservations, tables, tags=[], onEditReservation, onSeated, onEarlyFree, onWalkIn, onRefresh }) {
+function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation, onSeated, onEarlyFree, onWalkIn, onRefresh }) {
   const today     = todayISO()
   const todayRes  = reservations.filter(r=>r.date===today&&r.status!=='cancelled')
   const pending   = todayRes.filter(r=>r.status==='pending').length
@@ -895,7 +904,7 @@ function Dashboard({ reservations, tables, tags=[], onEditReservation, onSeated,
                       <TagBadges tagIds={r.tag_ids} tags={tags}/>
                     </td>
                     <td style={{...S.td, fontSize:15, fontWeight:700}}>👥 {r.guests}</td>
-                    <td style={{...S.td, fontSize:15, fontWeight:700}}><TableCell r={r} tables={tables}/></td>
+                    <td style={{...S.td, fontSize:15, fontWeight:700}}><TableCell r={r} tables={tables} groups={groups}/></td>
                     <td style={S.td}><Badge status={r.status}/></td>
                     <td className="hide-mobile" style={S.td}><span style={{ fontSize:12, color:B.gray }}>{r.is_manual?'👤 Manual':'🌐 Online'}</span></td>
                     <td className="hide-mobile" style={{...S.td, maxWidth:150}}>{r.notes?<span title={r.notes} style={{ fontSize:12, color:B.darkSoft, fontStyle:'italic', cursor:'help', display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:140 }}>{r.notes}</span>:<span style={{ color:B.grayLight }}>—</span>}</td>
@@ -933,7 +942,7 @@ function ExpandableNote({ note }) {
   )
 }
 
-function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDelete, onSeated, onEarlyFree }) {
+function ReservationsList({ reservations, tables, tags=[], groups=[], onNew, onEdit, onDelete, onSeated, onEarlyFree }) {
   const [dateFilter,   setDateFilter]   = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [search,       setSearch]       = useState('')
@@ -1095,7 +1104,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
                     <TagBadges tagIds={r.tag_ids} tags={tags}/>
                   </td>
                   <td style={{...S.td,fontSize:15,fontWeight:700}}>👥 {r.guests}</td>
-                  <td style={{...S.td,fontSize:15,fontWeight:700}}><TableCell r={r} tables={tables}/></td>
+                  <td style={{...S.td,fontSize:15,fontWeight:700}}><TableCell r={r} tables={tables} groups={groups}/></td>
                   <td style={S.td}><Badge status={r.status}/></td>
                   <td className="hide-mobile" style={S.td}><span style={{ fontSize:12, color:B.gray }}>{r.is_manual?'👤 Manual':'🌐 Online'}</span></td>
                   <td className="hide-mobile" style={{...S.td,maxWidth:150}}>{r.notes?<span title={r.notes} style={{ fontSize:12,color:B.darkSoft,fontStyle:'italic',cursor:'help',display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:140 }}>{r.notes}</span>:<span style={{ color:B.grayLight }}>—</span>}</td>
@@ -1150,7 +1159,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
                   <TagBadges tagIds={r.tag_ids} tags={tags}/>
                 </td>
                 <td style={{...S.td,fontSize:15,fontWeight:700}}>👥 {r.guests}</td>
-                <td style={{...S.td,fontSize:15,fontWeight:700}}><TableCell r={r} tables={tables}/></td>
+                <td style={{...S.td,fontSize:15,fontWeight:700}}><TableCell r={r} tables={tables} groups={groups}/></td>
                 <td style={S.td}><Badge status={r.status}/></td>
                 <td className="hide-mobile" style={S.td}><span style={{ fontSize:11, color:B.gray }}>{r.is_manual?'👤 Manual':'🌐 Online'}</span></td>
                 <td className="hide-mobile" style={{...S.td, maxWidth:180}}>
@@ -2331,12 +2340,12 @@ function AdminContent({ role }) {
       <div style={{ maxWidth:'95%', margin:'0 auto', padding:'28px 24px' }}>
         {loading ? <div style={{ textAlign:'center', padding:80, color:B.gray }}>Loading…</div> : (
           <>
-            {tab==='dashboard'    && <Dashboard reservations={reservations} tables={tables} tags={tags}
+            {tab==='dashboard'    && <Dashboard reservations={reservations} tables={tables} tags={tags} groups={groups}
               onEditReservation={r=>setEditModal(r)}
               onSeated={handleSeated} onEarlyFree={handleEarlyFree}
               onWalkIn={()=>setWalkInModal(true)} onRefresh={loadAll}/>}
             {tab==='reservations' && <>
-              <ReservationsList reservations={reservations} tables={tables} tags={tags}
+              <ReservationsList reservations={reservations} tables={tables} tags={tags} groups={groups}
                 onNew={()=>setNewModal(true)} onEdit={r=>setEditModal(r)} onDelete={r=>setDeleteModal(r)}
                 onSeated={handleSeated} onEarlyFree={handleEarlyFree}/>
               {deleted.length > 0 && (
