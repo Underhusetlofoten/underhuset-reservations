@@ -2141,6 +2141,7 @@ function AdminContent({ role }) {
   const [showDeleted,  setShowDeleted]  = useState(false)
   const [tags,         setTags]         = useState([])
   const [mobileMenu,   setMobileMenu]   = useState(false)
+  const [groups,       setGroups]       = useState([])
 
   const loadAll = useCallback(async (silent=false) => {
     if (!silent) setLoading(true)
@@ -2152,6 +2153,7 @@ function AdminContent({ role }) {
       setReservations(res||[]); setTables(tbl||[]); setWaitlist(wl||[])
       const del = await getDeletedReservations(); setDeleted(del||[])
       const tgs = await getTags(); setTags(tgs||[])
+      const grps = await getTableGroups(); setGroups(grps||[])
       setBreakfast(bfst||[]); setSettings(set||{})
     } catch(e) { console.error(e) }
     finally { setLoading(false) }
