@@ -1703,13 +1703,14 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
 
 
 const CAT_COLORS = {
+  Alert:   '#EF4444',
   Admin:   '#F59E0B',
   Occasion:'#3B82F6',
   Group:   '#10B981',
   Party:   '#7C3AED',
 }
-const CATEGORIES = ['Admin', 'Occasion', 'Group', 'Party']
-const CAT_EMOJI = { Admin:'📋', Occasion:'🎉', Group:'👥', Party:'🎈' }
+const CATEGORIES = ['Alert', 'Admin', 'Occasion', 'Group', 'Party']
+const CAT_EMOJI = { Alert:'🚨', Admin:'📋', Occasion:'🎉', Group:'👥', Party:'🎈' }
 
 function TagManager({ tags, onTagsChange }) {
   const [newName, setNewName] = useState('')
