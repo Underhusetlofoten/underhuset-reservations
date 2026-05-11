@@ -37,6 +37,24 @@ function tableLabel(r, tables) {
   return null
 }
 
+
+function GroupBadge({ name, tableNums }) {
+  const [open, setOpen] = React.useState(false)
+  return (
+    <div style={{ position:'relative', display:'inline-block' }}>
+      <span onClick={e=>{ e.stopPropagation(); setOpen(v=>!v) }}
+        style={{ background:'#EDE9FE', color:'#7C3AED', padding:'2px 10px', borderRadius:6, fontSize:15, fontWeight:700, cursor:'pointer' }}>
+        🪑 {name}
+      </span>
+      {open && (
+        <div onClick={e=>e.stopPropagation()}
+          style={{ position:'absolute', bottom:'110%', left:0, background:'#fff', border:'1px solid #E2E6E6', borderRadius:8, padding:'6px 12px', boxShadow:'0 4px 12px rgba(0,0,0,.15)', zIndex:999, whiteSpace:'nowrap', fontSize:13, color:'#3C4242' }}>
+          🪑 {tableNums}
+        </div>
+      )}
+    </div>
+  )
+}
 function TableCell({ r, tables, groups=[] }) {
   // Check if selected tables match a group
   const tids = r.table_ids || (r.table_id ? [r.table_id] : [])
@@ -48,7 +66,7 @@ function TableCell({ r, tables, groups=[] }) {
   )
   if (matchGroup) {
     const tableNums = (matchGroup.table_ids||[]).map(id=>tables.find(t=>t.id===id)?.name).filter(Boolean).join(', ')
-    return <span title={`Tables: ${tableNums}`} style={{ background:'#EDE9FE', color:'#7C3AED', padding:'2px 10px', borderRadius:6, fontSize:15, fontWeight:700, cursor:'help' }}>🪑 {matchGroup.name} <span style={{ fontSize:11, opacity:0.7 }}>({tableNums})</span></span>
+    return <GroupBadge name={matchGroup.name} tableNums={tableNums}/>
   }
   const label = tableLabel(r, tables)
   if (!label) return <span style={{ color:B.grayLight }}>—</span>
