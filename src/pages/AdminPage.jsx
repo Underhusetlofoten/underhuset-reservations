@@ -1398,32 +1398,41 @@ function TablesManager({ tables, groups, onRefresh }) {
         </div>
 
         {(groups||[]).length > 0 && (
-          <div style={{ ...S.card, padding:0, overflow:'auto' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead><tr>{['Group','Tables','Capacity','Status','Actions'].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
-              <tbody>
-                {(groups||[]).map(g=>(
-                  <tr key={g.id} onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
-                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                    <td style={{...S.td,fontWeight:600}}>{g.name}</td>
-                    <td style={S.td}>
-                      <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
-                        {(g.table_ids||[]).map(id=>{ const t=tables.find(t=>t.id===id); return t?<span key={id} style={{ background:B.blueLight,color:B.blue,padding:'2px 8px',borderRadius:6,fontSize:11,fontWeight:600 }}>{t.name}</span>:null })}
-                      </div>
-                    </td>
-                    <td style={S.td}>{g.capacity}p</td>
-                    <td style={S.td}>{g.is_active?<span style={{ background:B.greenLight,color:B.green,padding:'2px 8px',borderRadius:6,fontSize:11,fontWeight:700 }}>Active</span>:<span style={{ background:B.grayLight,color:B.gray,padding:'2px 8px',borderRadius:6,fontSize:11,fontWeight:700 }}>Inactive</span>}</td>
-                    <td style={{...S.td,whiteSpace:'nowrap'}}>
-                      <div style={{ display:'flex', gap:6 }}>
-                        <Btn size="sm" variant="secondary" onClick={()=>{ setGEditing(g); setGName(g.name); setGTables([...(g.table_ids||[])]) }}>Edit</Btn>
-                        <Btn size="sm" variant="ghost" onClick={async()=>{ await updateTableGroup(g.id,{is_active:!g.is_active}); onRefresh() }}>{g.is_active?'Deactivate':'Activate'}</Btn>
-                        <Btn size="sm" variant="danger" onClick={()=>setGConfirm(g)}>×</Btn>
-                      </div>
-                    </td>
-                  </tr>
+          <div style={{ ...S.card, display:'grid', gap:8 }}>
+            <div style={{ fontSize:12, color:B.gray, marginBottom:4 }}>⠿ Drag to reorder</div>
+            {[...(groups||[])].sort((a,b)=>(a.position||0)-(b.position||0)).map((g,i,arr)=>(
+              <div key={g.id} draggable
+                onDragStart={e=>e.dataTransfer.setData('gid',g.id)}
+                onDragOver={e=>e.preventDefault()}
+                onDrop={async e=>{
+                  const fromId=e.dataTransfer.getData('gid')
+                  if(fromId===g.id) return
+                  const sorted=[...arr].sort((a,b)=>(a.position||0)-(b.position||0))
+                  const fromIdx=sorted.findIndex(x=>x.id===fromId)
+                  const toIdx=sorted.findIndex(x=>x.id===g.id)
+                  const reordered=[...sorted]
+                  const [moved]=reordered.splice(fromIdx,1)
+                  reordered.splice(toIdx,0,moved)
+                  await Promise.all(reordered.map((x,idx)=>updateTableGroup(x.id,{position:idx})))
+                  onRefresh()
+                }}
+                style={{ display:'flex', alignItems:'center', gap:12, background:'#FAFAFA', borderRadius:10, padding:'10px 14px', border:`1px solid ${B.grayLight}`, cursor:'grab' }}>
+                <span style={{ color:B.gray, fontSize:18 }}>⠿</span>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:700, fontSize:14, color:B.dark }}>{g.name}</div>
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginTop:4 }}>
+                    {(g.table_ids||[]).map(id=>{ const t=tables.find(t=>t.id===id); return t?<span key={id} style={{ background:B.blueLight,color:B.blue,padding:'1px 6px',borderRadius:5,fontSize:11,fontWeight:600 }}>{t.name}</span>:null })}
+                  </div>
+                </div>
+                <span style={{ fontSize:12, color:B.gray }}>{g.capacity}p</span>
+                {g.is_active?<span style={{ background:B.greenLight,color:B.green,padding:'2px 8px',borderRadius:6,fontSize:11,fontWeight:700 }}>Active</span>:<span style={{ background:'#F3F4F6',color:B.gray,padding:'2px 8px',borderRadius:6,fontSize:11,fontWeight:700 }}>Inactive</span>}
+                <div style={{ display:'flex', gap:6 }}>
+                  <Btn size="sm" variant="secondary" onClick={()=>{ setGEditing(g); setGName(g.name); setGTables([...(g.table_ids||[])]) }}>Edit</Btn>
+                  <Btn size="sm" variant="ghost" onClick={async()=>{ await updateTableGroup(g.id,{is_active:!g.is_active}); onRefresh() }}>{g.is_active?'Deactivate':'Activate'}</Btn>
+                  <Btn size="sm" variant="danger" onClick={()=>setGConfirm(g)}>×</Btn>
+                </div>
+              </div>
                 ))}
-              </tbody>
-            </table>
           </div>
         )}
       </div>
