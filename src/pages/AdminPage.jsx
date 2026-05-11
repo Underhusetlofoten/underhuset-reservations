@@ -221,7 +221,7 @@ function MiniCalendar({ selected, onSelect }) {
 
 const EMPTY_FORM = { date:'', time:'', custom_time:'', guests:2, first_name:'', last_name:'', contact_person:'', email:'', phone:'', notes:'', merged_with:'', status:'confirmed', table_ids:[], tag_ids:[], is_manual:true }
 
-function TableSelector({ tables, selectedIds, occupiedIds, onChange }) {
+function TableSelector({ tables, groups=[], selectedIds, occupiedIds, onChange }) {
   const toggle = (id) => {
     const next = selectedIds.includes(id) ? selectedIds.filter(x=>x!==id) : [...selectedIds, id]
     onChange(next)
@@ -256,6 +256,25 @@ function TableSelector({ tables, selectedIds, occupiedIds, onChange }) {
         Assign tables
         {selectedIds.length>0 && <span style={{ marginLeft:8, color:B.orange }}>{selectedIds.length} selected · {totalSelected}p total</span>}
       </label>
+      {groups.length>0 && (
+        <div style={{ marginBottom:10 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:B.gray, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:6 }}>🪑 Groups</div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+            {groups.filter(g=>g.is_active).map(g=>{
+              const sel = (g.table_ids||[]).every(id=>selectedIds.includes(id)) && (g.table_ids||[]).length>0
+              const occ = (g.table_ids||[]).some(id=>occupiedIds.includes(id)&&!selectedIds.includes(id))
+              return (
+                <button key={g.id} disabled={occ} onClick={()=>{
+                  if(sel) onChange(selectedIds.filter(id=>!(g.table_ids||[]).includes(id)))
+                  else onChange([...new Set([...selectedIds,...(g.table_ids||[])])])
+                }} style={{ padding:'8px 14px', borderRadius:10, fontSize:12, fontWeight:600, border:`2px solid ${sel?B.orange:occ?B.grayLight:B.grayLight}`, background:sel?B.orange:occ?'#f5f5f5':'#fff', color:sel?'#fff':occ?B.grayLight:B.dark, cursor:occ?'not-allowed':'pointer' }}>
+                  {g.name} · {g.capacity}p
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
       {interior.length>0 && (
         <div style={{ marginBottom:10 }}>
           <div style={{ fontSize:10, fontWeight:700, color:B.gray, letterSpacing:'.06em', textTransform:'uppercase', marginBottom:6 }}>Interior</div>
@@ -340,7 +359,7 @@ function ReservationForm({ initial={}, tables=[], tags=[], onSave, onCancel, loa
       <div style={{ gridColumn:'1/-1' }}><Input label="Email *" type="email" value={f.email} onChange={v=>upd('email',v)} /></div>
       <div style={{ gridColumn:'1/-1' }}><Input label="Phone *" type="tel" value={f.phone} onChange={v=>upd('phone',v)} /></div>
       <div style={{ gridColumn:'1/-1' }}>
-        <TableSelector tables={tables} selectedIds={f.table_ids||[]} occupiedIds={occupiedIds} onChange={ids=>upd('table_ids',ids)}/>
+        <TableSelector tables={tables} groups={groups} selectedIds={f.table_ids||[]} occupiedIds={occupiedIds} onChange={ids=>upd('table_ids',ids)}/>
       </div>
       <div style={{ gridColumn:'1/-1' }}>
         <label style={S.label}>Internal notes</label>
