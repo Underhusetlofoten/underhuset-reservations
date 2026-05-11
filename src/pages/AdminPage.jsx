@@ -2356,7 +2356,7 @@ function AdminContent({ role }) {
             {tab==='waitlist'  && <WaitlistTab waitlist={waitlist} onRefresh={loadAll}/>}
             {tab==='breakfast' && <BreakfastTab breakfast={breakfast} settings={settings} onRefresh={loadAll}/>}
             {tab==='stats'     && <StatsTab reservations={reservations} breakfast={breakfast} settings={settings}/>}
-            {tab==='tables'    && <TablesManager tables={tables} onRefresh={loadAll}/>}
+            {tab==='tables'    && <TablesManager tables={tables} groups={groups} onRefresh={loadAll}/>}
             {tab==='settings' && role==='admin' && <SettingsTab settings={settings} onSave={s=>setSettings(s)} tags={tags} onTagsChange={()=>getTags().then(setTags)}/>}
           </>
         )}
