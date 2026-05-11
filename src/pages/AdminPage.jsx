@@ -39,7 +39,7 @@ function tableLabel(r, tables) {
 
 
 function GroupBadge({ name, tableNums }) {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = useState(false)
   return (
     <div style={{ position:'relative', display:'inline-block' }}>
       <span onClick={e=>{ e.stopPropagation(); setOpen(v=>!v) }}
