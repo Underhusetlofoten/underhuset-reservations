@@ -164,6 +164,28 @@ export async function setSetting(key, value) {
   if (error) throw error
 }
 
+// ─── Guest Search ─────────────────────────────────────────────────────────────
+
+export async function searchGuests(query) {
+  if (!query || query.length < 2) return []
+  const { data, error } = await supabase
+    .from('reservations')
+    .select('first_name, last_name, email, phone, contact_person')
+    .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(20)
+  if (error) return []
+  // Deduplicate by email
+  const seen = new Set()
+  return (data||[]).filter(r => {
+    const key = r.email || `${r.first_name}${r.last_name}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 // ─── Tags ─────────────────────────────────────────────────────────────────────
 
 export async function getTags() {

@@ -5,6 +5,7 @@ import StatsTab from './StatsTab.jsx'
 import {
   getReservations, createReservation, updateReservation, deleteReservation, getDeletedReservations, restoreReservation,
   getTags, createTag, updateTag, deleteTag,
+  searchGuests,
   getTableGroups, createTableGroup, updateTableGroup, deleteTableGroup,
   seatReservation, earlyFreeReservation,
   getTables, createTable, updateTable, deleteTable,
@@ -326,6 +327,48 @@ function TableSelector({ tables, groups=[], selectedIds, occupiedIds, onChange }
   )
 }
 
+
+function GuestAutocomplete({ value, onChange, onSelect }) {
+  const [results, setResults] = useState([])
+  const [open, setOpen] = useState(false)
+
+  const handleChange = async (v) => {
+    onChange(v)
+    if (v.length >= 2) {
+      const guests = await searchGuests(v)
+      setResults(guests)
+      setOpen(guests.length > 0)
+    } else {
+      setResults([])
+      setOpen(false)
+    }
+  }
+
+  return (
+    <div style={{ position:'relative' }}>
+      <label style={S.label}>First name *</label>
+      <input value={value} onChange={e=>handleChange(e.target.value)}
+        onBlur={()=>setTimeout(()=>setOpen(false),150)}
+        style={S.input}
+        onFocus={e=>e.target.style.borderColor=B.orange}
+        placeholder="Type to search past guests..."/>
+      {open && results.length > 0 && (
+        <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'#fff', border:`1px solid ${B.grayLight}`, borderRadius:10, boxShadow:'0 4px 16px rgba(0,0,0,.12)', zIndex:999, maxHeight:220, overflow:'auto' }}>
+          {results.map((g,i) => (
+            <div key={i} onMouseDown={()=>{ onSelect(g); setOpen(false) }}
+              style={{ padding:'10px 14px', cursor:'pointer', borderBottom:`1px solid ${B.grayLight}`, display:'flex', flexDirection:'column', gap:2 }}
+              onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
+              onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
+              <span style={{ fontWeight:700, fontSize:13, color:B.dark }}>{g.first_name} {g.last_name||''}</span>
+              <span style={{ fontSize:11, color:B.gray }}>{g.email||''}{g.phone?' · '+g.phone:''}{g.contact_person?' · '+g.contact_person:''}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ReservationForm({ initial={}, tables=[], tags=[], groups=[], onSave, onCancel, loading }) {
   const initTableIds = initial.table_ids || (initial.table_id ? [initial.table_id] : [])
   const initTagIds = (() => {
@@ -383,7 +426,7 @@ function ReservationForm({ initial={}, tables=[], tags=[], groups=[], onSave, on
           Object.entries(STATUS_COLOR).map(([k,v])=>({ value:k, label:v.label }))
         }/>
       </div>
-      <div><Input label="First name *" value={f.first_name} onChange={v=>upd('first_name',v)} /></div>
+      <div><GuestAutocomplete value={f.first_name} onChange={v=>upd('first_name',v)} onSelect={g=>{ setF(p=>({...p, first_name:g.first_name, last_name:g.last_name||p.last_name, email:g.email||p.email, phone:g.phone||p.phone, contact_person:g.contact_person||p.contact_person})) }}/></div>
       <div><Input label="Last name"  value={f.last_name}  onChange={v=>upd('last_name',v)} /></div>
       <div style={{ gridColumn:'1/-1' }}><Input label="Contact person" value={f.contact_person||''} onChange={v=>upd('contact_person',v)} /></div>
       <div style={{ gridColumn:'1/-1' }}><Input label="Email *" type="email" value={f.email} onChange={v=>upd('email',v)} /></div>
