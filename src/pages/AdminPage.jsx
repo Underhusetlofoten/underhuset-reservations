@@ -889,6 +889,8 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
   const pending   = todayRes.filter(r=>r.status==='pending').length
   const confirmed = todayRes.filter(r=>r.status==='confirmed').length
   const seated    = todayRes.filter(r=>r.status==='seated').length
+  const noShow    = reservations.filter(r=>r.date===today&&r.status==='no_show').length
+  const cancelled = reservations.filter(r=>r.date===today&&r.status==='cancelled').length
   const totalGuests = todayRes.reduce((s,r)=>s+r.guests,0)
   const activeTables = tables.filter(t=>t.is_active&&!t.is_blocked).length
 
@@ -941,7 +943,7 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))', gap:12, marginBottom:28 }}>
         <Stat icon="📋" value={todayRes.length} label="Today's bookings" />
         <Stat icon="👥" value={totalGuests}      label="Guests" color={B.orange}/>
-        <Stat icon="⏳" value={pending}          label="Pending" color={B.yellow}/>
+        <Stat icon="🚫" value={`${noShow} / ${cancelled}`} label="No-show / Cancelled" color={B.red}/>
         <Stat icon="✅" value={confirmed}        label="Confirmed" color={B.green}/>
         <Stat icon="🪑" value={seated}           label="Seated" color={B.blue}/>
         <Stat icon="🍽️"  value={activeTables}    label="Active tables" />
