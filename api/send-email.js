@@ -106,12 +106,12 @@ function waitlistSpotEmail(e) {
 
 function noShowEmail(r) {
   return baseEmail(`
-    <h2 style="color:#3C4242;margin:0 0 8px">Reservation Not Honoured</h2>
-    <p style="color:#8A8F8F;margin:0 0 24px;font-size:14px">We're sorry we couldn't accommodate you today.</p>
+    <h2 style="color:#3C4242;margin:0 0 8px">We missed you today 🍽️</h2>
+    <p style="color:#8A8F8F;margin:0 0 24px;font-size:14px">We had a table waiting for you at Underhuset — hopefully everything is alright on your end!</p>
     <div class="detail-row"><span class="detail-label">📅 Date</span><span class="detail-value">${fmtDate(r.date)}</span></div>
     <div class="detail-row"><span class="detail-label">⏰ Time</span><span class="detail-value">${fmtTime(r.time)}</span></div>
-    <p style="color:#8A8F8F;font-size:14px;margin-top:20px">Your reservation has been marked as no-show as we did not receive you within 15 minutes of your booking time. We hope to see you next time!</p>
-    <center><a href="${APP_URL}" class="btn btn-orange">Make a new reservation</a></center>
+    <p style="color:#8A8F8F;font-size:14px;margin-top:20px">Since we didn't hear from you, your reservation has been released. We'd love to welcome you to our little corner of Lofoten another time — the view, the food and the music will be waiting for you.</p>
+    <center><a href="${APP_URL}" class="btn btn-orange">Book your next visit</a></center>
   `)
 }
 
