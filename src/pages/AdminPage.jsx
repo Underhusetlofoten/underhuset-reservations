@@ -2273,11 +2273,12 @@ function AdminContent({ role }) {
     const autoComplete = async () => {
       const now = new Date()
       const seated = reservations.filter(r => r.status === 'seated' && r.seated_at)
+      let updated = false
       for (const r of seated) {
         const mins = (now - new Date(r.seated_at)) / 60000
-        if (mins >= 90) await updateReservation(r.id, { status: 'completed' })
+        if (mins >= 90) { await updateReservation(r.id, { status: 'completed' }); updated = true }
       }
-      if (seated.length > 0) loadAll()
+      if (updated) loadAll(true)
     }
     const id = setInterval(autoComplete, 5 * 60 * 1000)
     return () => clearInterval(id)
