@@ -914,6 +914,7 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
       }
       onRefresh()
     }
+    check()
     const id = setInterval(check, 60_000)
     return () => clearInterval(id)
   }, [todayRes])
