@@ -688,7 +688,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
     pending:   { bg:'#FEF3C7', border:'#F59E0B', text:'#92400E' },
     confirmed: { bg:'#D1FAE5', border:'#10B981', text:'#065F46' },
     seated:    { bg:'#DBEAFE', border:'#3B82F6', text:'#1E3A8A' },
-    early_free:{ bg:'#EDE9FE', border:'#7C3AED', text:'#4C1D95' },
+    early_free:{ bg:'#F3F4F6', border:'#9CA3AF', text:'#6B7280' },
   }
 
   const doSwap = async (targetTableId) => {
