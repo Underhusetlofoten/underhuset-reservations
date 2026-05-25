@@ -30,10 +30,13 @@ function fmtTime(t) { return t ? t.slice(0,5) : '' }
 
 // Returns label for one or multiple tables
 function tableLabel(r, tables) {
-  if (r.table_ids && r.table_ids.length > 0) {
-    const names = r.table_ids.map(id => tables.find(t=>t.id===id)?.name).filter(Boolean)
+  let ids = []
+  try { ids = typeof r.table_ids==='string' ? JSON.parse(r.table_ids) : (r.table_ids||[]) } catch {}
+  if (ids.length > 0) {
+    const names = ids.map(id => tables.find(t=>t.id===id)?.name).filter(Boolean)
     if (names.length > 0) return names.join('+')
   }
+  if (r.table_id) { const t = tables.find(t=>t.id===r.table_id); if(t) return t.name }
   if (r.table) return r.table.name
   return null
 }
@@ -699,7 +702,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
     if (conflict) {
       setMergePrompt({ source: dragging, conflict, targetTableId })
     } else {
-      await updateReservation(dragging.id, { table_id: targetTableId, table_ids: JSON.stringify([targetTableId]) })
+      await updateReservation(dragging.id, { table_id: targetTableId })
       onRefresh()
     }
   }
@@ -718,8 +721,8 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
   const doSwapConfirm = async () => {
     if (!mergePrompt) return
     const { source, conflict, targetTableId } = mergePrompt
-    await updateReservation(source.id, { table_id: targetTableId, table_ids: JSON.stringify([targetTableId]) })
-    await updateReservation(conflict.id, { table_id: source.table_id, table_ids: JSON.stringify([source.table_id]) })
+    await updateReservation(source.id, { table_id: targetTableId })
+    await updateReservation(conflict.id, { table_id: source.table_id })
     setMergePrompt(null)
     setDragging(null)
     setDragOverTable(null)
