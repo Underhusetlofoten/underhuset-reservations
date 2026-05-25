@@ -30,14 +30,17 @@ function fmtTime(t) { return t ? t.slice(0,5) : '' }
 
 // Returns label for one or multiple tables
 function tableLabel(r, tables) {
+  // Multi-table: only use table_ids if it has more than 1 table
   let ids = []
   try { ids = typeof r.table_ids==='string' ? JSON.parse(r.table_ids) : (r.table_ids||[]) } catch {}
-  if (ids.length > 0) {
+  if (ids.length > 1) {
     const names = ids.map(id => tables.find(t=>t.id===id)?.name).filter(Boolean)
     if (names.length > 0) return names.join('+')
   }
-  if (r.table_id) { const t = tables.find(t=>t.id===r.table_id); if(t) return t.name }
+  // Single table: use table_id (always fresh from Supabase join)
   if (r.table) return r.table.name
+  if (r.table_id) { const t = tables.find(t=>t.id===r.table_id); if(t) return t.name }
+  if (ids.length === 1) { const t = tables.find(t=>t.id===ids[0]); if(t) return t.name }
   return null
 }
 
