@@ -777,11 +777,11 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
 
     return (
       <div ref={el=>rowRefs.current[table.id]=el}
-        style={{ display:'flex', height:ROW_H, borderBottom:`1px solid ${B.grayLight}`, background: isOver&&dragging ? B.orangePale : '#fff', transition:'background .1s', position:'relative' }}>
+        style={{ display:'flex', height:ROW_H, borderBottom:`1px solid ${B.grayLight}`, background: isOver&&dragging ? B.orangePale : isBlocked ? '#FFF8F0' : '#fff', transition:'background .1s', position:'relative' }}>
         <div style={{ width:LABEL_W, minWidth:LABEL_W, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRight:`1px solid ${B.grayLight}`, background:'#FAFAFA', gap:2, flexShrink:0 }}>
-          <span style={{ fontWeight:700, fontSize:14, color:B.dark }}>#{table.name}</span>
+          <span style={{ fontWeight:700, fontSize:14, color:isBlocked?B.orange:B.dark }}>#{table.name}</span>
           <span style={{ fontSize:10, color:B.gray }}>👥{table.capacity}</span>
-          {isBlocked && <span style={{ fontSize:9, color:'#9CA3AF', background:'#F3F4F6', borderRadius:4, padding:'1px 4px' }}>staff</span>}
+          {isBlocked && <span style={{ fontSize:9, color:B.orange, background:B.orangePale, borderRadius:4, padding:'1px 4px' }}>staff</span>}
         </div>
         <div style={{ flex:1, position:'relative', overflow:'hidden' }}>
           {hours.map(h=>(
