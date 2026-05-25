@@ -1020,7 +1020,9 @@ function ReservationsList({ reservations, tables, tags=[], groups=[], onNew, onE
   const [rangeEnd,     setRangeEnd]     = useState(null)
 
   const filtered = reservations.filter(r => {
-    if (dateFilter   && r.date!==dateFilter) return false
+    if (rangeStart && rangeEnd) {
+      if (r.date < rangeStart || r.date > rangeEnd) return false
+    } else if (dateFilter && r.date!==dateFilter) return false
     if (statusFilter && r.status!==statusFilter) return false
     if (search) {
       const q = search.toLowerCase()
@@ -1044,7 +1046,7 @@ function ReservationsList({ reservations, tables, tags=[], groups=[], onNew, onE
     const blob = new Blob(['\ufeff'+csv], { type:'text/csv;charset=utf-8' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `reservations-${dateFilter||'all'}.csv`
+    a.download = `reservations-${rangeStart&&rangeEnd?rangeStart+'_'+rangeEnd:dateFilter||'all'}.csv`
     a.click()
   }
 
