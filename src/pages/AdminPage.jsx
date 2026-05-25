@@ -1018,6 +1018,7 @@ function ReservationsList({ reservations, tables, tags=[], groups=[], onNew, onE
   const [calM, setCalM] = useState(today.getMonth())
   const [rangeStart,   setRangeStart]   = useState(null)
   const [rangeEnd,     setRangeEnd]     = useState(null)
+  const [selected,     setSelected]     = useState(new Set())
 
   const filtered = reservations.filter(r => {
     if (rangeStart && rangeEnd) {
@@ -1099,6 +1100,7 @@ function ReservationsList({ reservations, tables, tags=[], groups=[], onNew, onE
           <Btn size="sm" variant={view==='list'?'primary':'secondary'} onClick={()=>setView('list')}>☰ List</Btn>
           <Btn size="sm" variant={view==='month'?'primary':'secondary'} onClick={()=>setView('month')}>📅 Month</Btn>
           <Btn size="sm" variant="secondary" onClick={exportExcel}>📊 Excel</Btn>
+          {selected.size>0 && <Btn size="sm" variant="primary" onClick={()=>{ const sel=filtered.filter(r=>selected.has(r.id)); const rows=[['Date','Time','First Name','Last Name','Guests','Table','Status','Email','Phone','Notes','Source'],...sel.map(r=>[r.date,r.time,r.first_name,r.last_name||'',r.guests,tName(r),r.status,r.email||'',r.phone||'',r.notes||'',r.is_manual?'Manual':'Online'])]; const csv=rows.map(row=>row.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n'); const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`selected-${sel.length}-reservations.csv`; a.click() }}>📊 Export {selected.size} selected</Btn>}
           <Btn size="sm" variant="secondary" onClick={exportPDF}>📄 PDF</Btn>
           <Btn onClick={onNew}>+ New manual reservation</Btn>
         </div>
@@ -1217,13 +1219,14 @@ function ReservationsList({ reservations, tables, tags=[], groups=[], onNew, onE
       {view!=='month' && <div style={{ ...S.card, padding:0, overflow:'auto' }}>
         <table className="res-table" style={{ width:'100%', borderCollapse:'collapse', minWidth:800 }}>
           <thead>
-            <tr><th className="hide-mobile" style={S.th}>Code</th>{['Date','Time','Name','Guests','Table','Status'].map(h=><th key={h} style={S.th}>{h}</th>)}<th className="hide-mobile" style={S.th}>Source</th><th className="hide-mobile" style={S.th}>Notes</th><th style={S.th}></th></tr>
+            <tr><th style={S.th}><input type="checkbox" checked={selected.size===filtered.filter(r=>view!=='month').length&&filtered.length>0} onChange={e=>{ if(e.target.checked) setSelected(new Set(filtered.map(r=>r.id))); else setSelected(new Set()) }}/></th><th className="hide-mobile" style={S.th}>Code</th>{['Date','Time','Name','Guests','Table','Status'].map(h=><th key={h} style={S.th}>{h}</th>)}<th className="hide-mobile" style={S.th}>Source</th><th className="hide-mobile" style={S.th}>Notes</th><th style={S.th}></th></tr>
           </thead>
           <tbody>
             {filtered.length===0&&<tr><td colSpan={9} style={{...S.td,textAlign:'center',color:B.gray,padding:40}}>No results</td></tr>}
             {view!=='month' && filtered.map(r=>(
               <tr key={r.id} onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                <td style={S.td}><input type="checkbox" checked={selected.has(r.id)} onChange={e=>{ const s=new Set(selected); e.target.checked?s.add(r.id):s.delete(r.id); setSelected(s) }}/></td>
                 <td className="hide-mobile" style={{...S.td,fontWeight:700,fontSize:12,color:B.gray}}>{r.reservation_code||'—'}</td>
                 <td style={{...S.td,fontWeight:600,fontSize:15}}>{fmtDate(r.date)}</td>
                 <td style={{...S.td,fontWeight:700,fontSize:15}}>{fmtTime(r.time)}</td>
