@@ -1031,12 +1031,19 @@ function ReservationsList({ reservations, tables, tags=[], groups=[], onNew, onE
     return true
   })
 
+  const monthStr = `${calY}-${String(calM+1).padStart(2,'0')}`
+  const monthFiltered = reservations.filter(r=>{
+    if (rangeStart && rangeEnd) return r.date >= rangeStart && r.date <= rangeEnd
+    return r.date.startsWith(monthStr)
+  })
+  const exportData = view==='month' ? monthFiltered : filtered
+
   const tName = (r) => tables.find(t=>t.id===r.table_id)?.name || (r.table_ids?.length ? r.table_ids.map(id=>tables.find(t=>t.id===id)?.name||'').filter(Boolean).join('+') : '—')
 
   const exportExcel = () => {
     const rows = [
       ['Date','Time','First Name','Last Name','Guests','Table','Status','Email','Phone','Notes','Source'],
-      ...filtered.map(r=>[
+      ...exportData.map(r=>[
         r.date, r.time, r.first_name, r.last_name||'', r.guests,
         tName(r), r.status, r.email||'', r.phone||'', r.notes||'',
         r.is_manual?'Manual':'Online'
