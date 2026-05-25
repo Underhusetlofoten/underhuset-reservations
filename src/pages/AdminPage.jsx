@@ -702,7 +702,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
     if (conflict) {
       setMergePrompt({ source: dragging, conflict, targetTableId })
     } else {
-      await updateReservation(dragging.id, { table_id: targetTableId })
+      await updateReservation(dragging.id, { table_id: targetTableId, table_ids: '["' + targetTableId + '"]' })
       onRefresh()
     }
   }
@@ -721,8 +721,8 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
   const doSwapConfirm = async () => {
     if (!mergePrompt) return
     const { source, conflict, targetTableId } = mergePrompt
-    await updateReservation(source.id, { table_id: targetTableId })
-    await updateReservation(conflict.id, { table_id: source.table_id })
+    await updateReservation(source.id, { table_id: targetTableId, table_ids: '["' + targetTableId + '"]' })
+    await updateReservation(conflict.id, { table_id: source.table_id, table_ids: '["' + source.table_id + '"]' })
     setMergePrompt(null)
     setDragging(null)
     setDragOverTable(null)
