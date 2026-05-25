@@ -1511,6 +1511,14 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
     } finally { setStaffSaving(false) }
   }
 
+  // Auto-apply staff to new reservations without staff
+  useEffect(() => {
+    if (!staffDay || !dateFilter) return
+    const newResos = breakfast.filter(r => r.date === dateFilter && r.status !== 'cancelled' && !r.staff_names)
+    if (newResos.length === 0) return
+    Promise.all(newResos.map(r => updateBreakfastReservation(r.id, { staff_names: staffDay }))).then(onRefresh)
+  }, [breakfast, staffDay, dateFilter])
+
   let hotels = []
   try { hotels = JSON.parse(settings.hotels||'[]') } catch {}
 
