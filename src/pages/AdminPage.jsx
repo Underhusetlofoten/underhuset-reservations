@@ -468,7 +468,7 @@ function ReservationForm({ initial={}, tables=[], tags=[], groups=[], onSave, on
 
 function WalkInModal({ tables, onSave, onClose, loading }) {
   const [guests,   setGuests]   = useState(2)
-  const [tableId,  setTableId]  = useState('')
+  const [tableIds, setTableIds] = useState([])
   const [name,     setName]     = useState('')
 
   const now = new Date()
@@ -484,7 +484,7 @@ function WalkInModal({ tables, onSave, onClose, loading }) {
   const save = () => onSave({
     date: todayISO(), time: timeStr, guests,
     first_name: name || 'Walk-in', last_name: '', email: 'walkin@underhuset.no', phone: '-',
-    status: 'seated', is_manual: true, table_id: tableId || null,
+    status: 'seated', is_manual: true, table_id: tableIds[0]||null, table_ids: JSON.stringify(tableIds),
     notes: 'Walk-in', seated_at: new Date().toISOString(),
   })
 
@@ -517,7 +517,7 @@ function WalkInModal({ tables, onSave, onClose, loading }) {
             ))}
           </div>
         </div>
-        <Select label="Table" value={tableId} onChange={setTableId} options={tableOptions}/>
+        <TableSelector tables={tables} groups={groups} selectedIds={tableIds} occupiedIds={occupiedIds} onChange={setTableIds}/>
         <div style={{ background:B.orangePale, borderRadius:10, padding:12, fontSize:12, color:B.darkSoft }}>
           ⏰ Arrival time: <strong>{new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</strong> · Status will be set to <strong>Seated</strong>
         </div>
@@ -678,7 +678,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
   const exteriorTables = tables.filter(t=>t.zone==='exterior'&&t.is_active).sort((a,b)=>Number(a.name)-Number(b.name))
   const allTables = [...interiorTables, ...exteriorTables]
 
-  const activeRes = todayRes.filter(r=>!['no_show','cancelled','completed'].includes(r.status))
+  const activeRes = todayRes.filter(r=>!['no_show','cancelled'].includes(r.status))
   const getResForTable = (tableId) => activeRes.filter(r => r.table_id === tableId)
 
   const timeToH = t => { const [h,m] = t.split(':').map(Number); return h + m/60 }
@@ -692,6 +692,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
     confirmed: { bg:'#D1FAE5', border:'#10B981', text:'#065F46' },
     seated:    { bg:'#DBEAFE', border:'#3B82F6', text:'#1E3A8A' },
     early_free:{ bg:'#F3F4F6', border:'#9CA3AF', text:'#6B7280' },
+    completed:  { bg:'#F3F4F6', border:'#D1D5DB', text:'#9CA3AF' },
   }
 
   const doSwap = async (targetTableId) => {
