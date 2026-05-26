@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase.js'
 import { B, STATUS_COLOR, ALL_TIMES, MONTHS_EN, DAYS_SHORT, DAY_KEYS, DAY_NAMES, BLOCK_HOURS } from '../brand.js'
 import StatsTab from './StatsTab.jsx'
 import {
-  getReservations, createReservation, updateReservation, deleteReservation, getDeletedReservations, restoreReservation,
+  getReservations, createReservation, updateReservation, deleteReservation, getDeletedReservations, restoreReservation, getCancelledReservations,
   getTags, createTag, updateTag, deleteTag,
   searchGuests,
   getTableGroups, createTableGroup, updateTableGroup, deleteTableGroup,
@@ -186,7 +186,7 @@ function Confirm({ message, onYes, onNo, yesLabel='Delete', yesVariant='danger' 
   )
 }
 
-function QuickActions({ reservation, onSeated, onEarlyFree, onEdit }) {
+function QuickActions({ reservation, onSeated, onEarlyFree, onEdit, onCancel }) {
   const s = reservation.status
   return (
     <div style={{ display:'flex', gap:5, flexWrap:'nowrap' }}>
@@ -978,7 +978,7 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
                     <td style={S.td}><Badge status={r.status}/></td>
                     <td className="hide-mobile" style={S.td}><span style={{ fontSize:12, color:B.gray }}>{r.is_manual?'👤 Manual':'🌐 Online'}</span></td>
                     <td className="hide-mobile" style={{...S.td, maxWidth:150}}>{r.notes?<span title={r.notes} style={{ fontSize:12, color:B.darkSoft, fontStyle:'italic', cursor:'help', display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:140 }}>{r.notes}</span>:<span style={{ color:B.grayLight }}>—</span>}</td>
-                    <td style={{...S.td, whiteSpace:'nowrap'}}><div style={{ display:'flex', gap:4 }}><QuickActions reservation={r} onSeated={onSeated} onEarlyFree={onEarlyFree} onEdit={r=>onEditReservation(r)}/>{!['no_show','cancelled','completed'].includes(r.status)&&<Btn size="sm" variant="danger" onClick={()=>updateReservation(r.id,{status:'no_show'}).then(onRefresh)} style={{ fontSize:10, padding:'4px 8px' }}>NS</Btn>}</div></td>
+                    <td style={{...S.td, whiteSpace:'nowrap'}}><div style={{ display:'flex', gap:4 }}><QuickActions reservation={r} onSeated={onSeated} onEarlyFree={onEarlyFree} onEdit={r=>onEditReservation(r)} onCancel={r=>updateReservation(r.id,{status:'cancelled'}).then(onRefresh)}/>{!['no_show','cancelled','completed'].includes(r.status)&&<Btn size="sm" variant="danger" onClick={()=>updateReservation(r.id,{status:'no_show'}).then(onRefresh)} style={{ fontSize:10, padding:'4px 8px' }}>NS</Btn>}</div></td>
                   </tr>
                 ))}
               </tbody>
@@ -2267,6 +2267,8 @@ function AdminContent({ role }) {
   const [saving,       setSaving]       = useState(false)
   const [deleted,      setDeleted]      = useState([])
   const [showDeleted,  setShowDeleted]  = useState(false)
+  const [cancelled,    setCancelled]    = useState([])
+  const [showCancelled,setShowCancelled] = useState(false)
   const [tags,         setTags]         = useState([])
   const [mobileMenu,   setMobileMenu]   = useState(false)
   const [groups,       setGroups]       = useState([])
@@ -2280,6 +2282,7 @@ function AdminContent({ role }) {
       ])
       setReservations(res||[]); setTables(tbl||[]); setWaitlist(wl||[])
       const del = await getDeletedReservations(); setDeleted(del||[])
+      const can = await getCancelledReservations(); setCancelled(can||[])
       const tgs = await getTags(); setTags(tgs||[])
       const grps = await getTableGroups(); setGroups(grps||[])
       setBreakfast(bfst||[]); setSettings(set||{})
@@ -2452,6 +2455,38 @@ function AdminContent({ role }) {
               <ReservationsList reservations={reservations} tables={tables} tags={tags} groups={groups}
                 onNew={()=>setNewModal(true)} onEdit={r=>setEditModal(r)} onDelete={r=>setDeleteModal(r)}
                 onSeated={handleSeated} onEarlyFree={handleEarlyFree}/>
+              {cancelled.length > 0 && (
+                <div style={{ marginTop:16 }}>
+                  <button onClick={()=>setShowCancelled(v=>!v)} style={{ background:'none', border:'1px solid #E2E6E6', borderRadius:8, padding:'8px 16px', fontSize:13, cursor:'pointer', color:'#8A8F8F' }}>
+                    ✕ {showCancelled ? 'Hide' : 'Show'} cancelled reservations ({cancelled.length})
+                  </button>
+                  {showCancelled && (
+                    <div style={{ marginTop:12, border:'1px solid #E2E6E6', borderRadius:12, overflow:'auto' }}>
+                      <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                        <thead><tr style={{ background:'#FAF6F0' }}>
+                          {['Code','Date','Time','Name','Guests','Email','Table',''].map(h=><th key={h} style={{ padding:'10px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#8A8F8F', textTransform:'uppercase' }}>{h}</th>)}
+                        </tr></thead>
+                        <tbody>
+                          {cancelled.map(r=>(
+                            <tr key={r.id} style={{ borderTop:'1px solid #E2E6E6' }}>
+                              <td style={{ padding:'10px 12px', fontWeight:700, fontSize:12, color:'#8A8F8F' }}>{r.reservation_code||'—'}</td>
+                              <td style={{ padding:'10px 12px' }}>{r.date}</td>
+                              <td style={{ padding:'10px 12px' }}>{r.time?.slice(0,5)}</td>
+                              <td style={{ padding:'10px 12px', fontWeight:600 }}>{r.first_name} {r.last_name||''}</td>
+                              <td style={{ padding:'10px 12px' }}>{r.guests}</td>
+                              <td style={{ padding:'10px 12px', color:'#8A8F8F', fontSize:12 }}>{r.email}</td>
+                              <td style={{ padding:'10px 12px' }}><TableCell r={r} tables={tables} groups={groups}/></td>
+                              <td style={{ padding:'10px 12px' }}>
+                                <button onClick={async()=>{ await updateReservation(r.id,{status:'confirmed'}); loadAll() }} style={{ background:'#D1FAE5', border:'none', borderRadius:6, padding:'4px 10px', fontSize:12, fontWeight:700, color:'#065F46', cursor:'pointer' }}>↩ Restore</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
               {deleted.length > 0 && (
                 <div style={{ marginTop:24 }}>
                   <button onClick={()=>setShowDeleted(v=>!v)} style={{ background:'none', border:'1px solid #E2E6E6', borderRadius:8, padding:'8px 16px', fontSize:13, cursor:'pointer', color:'#8A8F8F' }}>

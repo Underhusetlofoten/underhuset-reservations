@@ -41,6 +41,17 @@ export async function updateReservation(id, payload) {
   return data
 }
 
+export async function getCancelledReservations() {
+  const { data, error } = await supabase
+    .from('reservations')
+    .select('*, table:tables(id,name)')
+    .eq('status','cancelled')
+    .is('deleted_at', null)
+    .order('date','time')
+  if (error) throw error
+  return data || []
+}
+
 export async function getDeletedReservations() {
   const { data, error } = await supabase
     .from('reservations')
