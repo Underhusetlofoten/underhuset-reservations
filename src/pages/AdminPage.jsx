@@ -2292,10 +2292,13 @@ function AdminContent({ role }) {
     return()=>clearInterval(id)
   },[loadAll, tab])
 
+  const reservationsRef = useRef(reservations)
+  useEffect(()=>{ reservationsRef.current = reservations },[reservations])
+
   useEffect(()=>{
     const autoComplete = async () => {
       const now = new Date()
-      const seated = reservations.filter(r => r.status === 'seated' && r.seated_at)
+      const seated = reservationsRef.current.filter(r => r.status === 'seated' && r.seated_at)
       let updated = false
       for (const r of seated) {
         const mins = (now - new Date(r.seated_at)) / 60000
@@ -2305,7 +2308,7 @@ function AdminContent({ role }) {
     }
     const id = setInterval(autoComplete, 5 * 60 * 1000)
     return () => clearInterval(id)
-  },[reservations, loadAll])
+  },[loadAll])
 
   useEffect(()=>{
     const autoCompleteBreakfast = async () => {
