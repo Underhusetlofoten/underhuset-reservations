@@ -2632,7 +2632,7 @@ function AdminContent({ role }) {
       {newModal    && <Modal title="New manual reservation" onClose={()=>setNewModal(false)}><ReservationForm tables={tables} tags={tags} groups={groups} onSave={handleCreate} onCancel={()=>setNewModal(false)} loading={saving}/></Modal>}
       {editModal   && <Modal title="Edit reservation" onClose={()=>setEditModal(null)}><ReservationForm initial={{...editModal, time:fmtTime(editModal.time), table_ids:editModal.table_ids||[]}} tables={tables} tags={tags} groups={groups} onSave={handleUpdate} onCancel={()=>setEditModal(null)} loading={saving}/></Modal>}
       {deleteModal && <Confirm message={`Delete reservation for ${deleteModal.first_name} ${deleteModal.last_name} (${fmtDate(deleteModal.date)}, ${fmtTime(deleteModal.time)})?`} onYes={handleDelete} onNo={()=>setDeleteModal(null)}/>}
-      {walkInModal && <WalkInModal tables={tables} onSave={handleWalkIn} onClose={()=>setWalkInModal(false)} loading={saving}/>}
+      {walkInModal && <WalkInModal tables={tables} groups={groups} reservations={reservations.filter(r=>r.date===todayISO())} onSave={handleWalkIn} onClose={()=>setWalkInModal(false)} loading={saving}/>}
     </div>
   )
 }
