@@ -11,7 +11,7 @@ export async function getReservations({ date, status } = {}) {
     .from('reservations')
     .select('*, table:tables(id,name,zone,capacity)')
     .is('deleted_at', null)
-    .not('is_absorbed', 'is', true)
+    .neq('is_absorbed', true)
     .order('date').order('time')
   if (date)   q = q.eq('date', date)
   if (status) q = q.eq('status', status)
