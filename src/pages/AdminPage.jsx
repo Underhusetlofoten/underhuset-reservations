@@ -1131,7 +1131,7 @@ function ExpandableNote({ note }) {
 
 function ReservationsList({ reservations, tables, tags=[], groups=[], onNew, onEdit, onDelete, onSeated, onEarlyFree }) {
   const [dateFilter,   setDateFilter]   = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('confirmed')
   const [search,       setSearch]       = useState('')
   const [view,         setView]         = useState('list')
   const today = new Date()
@@ -1140,11 +1140,8 @@ function ReservationsList({ reservations, tables, tags=[], groups=[], onNew, onE
   const [rangeStart,   setRangeStart]   = useState(null)
   const [rangeEnd,     setRangeEnd]     = useState(null)
   const [selected,     setSelected]     = useState(new Set())
-  const [showExpired,  setShowExpired]  = useState(false)
 
-  const EXPIRED = ['cancelled','completed','early_free','no_show']
   const filtered = reservations.filter(r => {
-    if (!showExpired && EXPIRED.includes(r.status)) return false
     if (rangeStart && rangeEnd) {
       if (r.date < rangeStart || r.date > rangeEnd) return false
     } else if (dateFilter && r.date!==dateFilter) return false
@@ -1223,7 +1220,6 @@ function ReservationsList({ reservations, tables, tags=[], groups=[], onNew, onE
         <div style={{ display:'flex', gap:8 }}>
           <Btn size="sm" variant={view==='list'?'primary':'secondary'} onClick={()=>setView('list')}>☰ List</Btn>
           <Btn size="sm" variant={view==='month'?'primary':'secondary'} onClick={()=>setView('month')}>📅 Month</Btn>
-          <Btn size="sm" variant={showExpired?'primary':'secondary'} onClick={()=>setShowExpired(v=>!v)}>{showExpired?'▾ Hide':'▸ Show'} expired/cancelled</Btn>
           <Btn size="sm" variant="secondary" onClick={exportExcel}>📊 Excel</Btn>
           {selected.size>0 && <Btn size="sm" variant="primary" onClick={()=>{ const sel=filtered.filter(r=>selected.has(r.id)); const rows=[['Date','Time','First Name','Last Name','Guests','Table','Status','Email','Phone','Notes','Source'],...sel.map(r=>[r.date,r.time,r.first_name,r.last_name||'',r.guests,tName(r),r.status,r.email||'',r.phone||'',r.notes||'',r.is_manual?'Manual':'Online'])]; const csv=rows.map(row=>row.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n'); const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`selected-${sel.length}-reservations.csv`; a.click() }}>📊 Export {selected.size} selected</Btn>}
           <Btn size="sm" variant="secondary" onClick={exportPDF}>📄 PDF</Btn>
