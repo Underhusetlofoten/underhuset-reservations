@@ -686,6 +686,8 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
 
   const hours = []
   for (let h = Math.ceil(TL_S); h <= TL_E; h++) hours.push(h)
+  const quarters = []
+  for (let h = TL_S; h <= TL_E; h += 0.25) quarters.push(h)
 
   const statusColor = {
     pending:   { bg:'#FEF3C7', border:'#F59E0B', text:'#92400E' },
@@ -785,9 +787,11 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
           {isBlocked && <span style={{ fontSize:9, color:B.orange, background:B.orangePale, borderRadius:4, padding:'1px 4px' }}>staff</span>}
         </div>
         <div style={{ flex:1, position:'relative', overflow:'hidden' }}>
-          {hours.map(h=>(
-            <div key={h} style={{ position:'absolute', left:`${pct(h)}%`, top:0, bottom:0, width:1, background:'#F0F0F0' }}/>
-          ))}
+          {quarters.map(h=>{
+            const isHour = Number.isInteger(h)
+            const isHalf = !isHour && (h*2)%1===0
+            return <div key={h} style={{ position:'absolute', left:`${pct(h)}%`, top:0, bottom:0, width:1, background:isHour?'#E0E0E0':isHalf?'#EBEBEB':'#F5F5F5' }}/>
+          })}
           {showNow && <div style={{ position:'absolute', left:`${nowPct}%`, top:0, bottom:0, width:2, background:'rgba(239,68,68,0.5)', zIndex:3 }}/>}
           {resos.map(r=>{
             const h = timeToH(r.time)
