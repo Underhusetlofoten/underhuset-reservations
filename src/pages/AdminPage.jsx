@@ -923,7 +923,7 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
   const daysInMonth = new Date(calY,calM+1,0).getDate()
 
   const filteredRes = todayRes.filter(r=>{
-    if(!['pending','confirmed','seated','early_free','completed'].includes(r.status)) return false
+    if(!['pending','confirmed','seated'].includes(r.status)) return false
     if(search){ const q=search.toLowerCase(); if(!`${r.first_name} ${r.last_name||''}`.toLowerCase().includes(q)) return false }
     if(timeFilter==='lunch')  { const h=parseInt(r.time); return h>=13&&h<17 }
     if(timeFilter==='evening'){ const h=parseInt(r.time); return h>=17 }
@@ -937,7 +937,7 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
     return a.time.localeCompare(b.time)
   })
 
-  const hiddenRes = reservations.filter(r=>r.date===today&&['no_show','cancelled'].includes(r.status))
+  const hiddenRes = reservations.filter(r=>r.date===today&&['no_show','cancelled','completed','early_free'].includes(r.status))
   const remaining = todayRes.filter(r=>['pending','confirmed'].includes(r.status)).length
   const remainingGuests = todayRes.filter(r=>['pending','confirmed'].includes(r.status)).reduce((s,r)=>s+r.guests,0)
 
