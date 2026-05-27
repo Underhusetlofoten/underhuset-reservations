@@ -1681,15 +1681,38 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
   }
 
   const exportCSV = () => {
+    const allStatuses = filtered
+    const completed = allStatuses.filter(r=>r.status==='seated'||r.status==='completed')
+    const noshow    = allStatuses.filter(r=>r.status==='no_show')
+    const cancelled = allStatuses.filter(r=>r.status==='cancelled')
+
     const rows = [
-      ['Date','Hotel','Guests','Contact','Email','Phone','Notes','Staff','Status'],
-      ...filtered.map(r=>[r.date, r.hotel, r.guests, r.contact_name, r.contact_email||'', r.contact_phone||'', r.notes||'', r.staff_names||'', r.status])
+      ['Date','Hotel','Contact','Email','Phone','Notes','Staff','Completed Guests','No-show Guests','Cancelled Guests','Status','Billable'],
+      ...allStatuses.map(r=>[
+        r.date, r.hotel, r.contact_name, r.contact_email||'', r.contact_phone||'', r.notes||'', r.staff_names||'',
+        (r.status==='seated'||r.status==='completed') ? r.guests : '',
+        r.status==='no_show' ? r.guests : '',
+        r.status==='cancelled' ? r.guests : '',
+        r.status,
+        (r.status==='seated'||r.status==='completed'||r.status==='no_show') ? 'YES' : 'NO'
+      ])
     ]
-    const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type:'text/csv' })
+    // Summary rows
+    rows.push([])
+    rows.push(['SUMMARY','','','','','','',
+      completed.reduce((s,r)=>s+r.guests,0),
+      noshow.reduce((s,r)=>s+r.guests,0),
+      cancelled.reduce((s,r)=>s+r.guests,0),
+      '',''])
+    rows.push(['','','','','','','Billable guests:',
+      completed.reduce((s,r)=>s+r.guests,0)+noshow.reduce((s,r)=>s+r.guests,0),
+      '','','',''])
+
+    const csv = rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n')
+    const blob = new Blob(['\ufeff'+csv], { type:'text/csv;charset=utf-8' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `breakfast-${dateFilter||'all'}-${hotelFilter||'all'}.csv`
+    a.download = `breakfast-${hotelFilter||'all'}-${dateFilter||'all'}.csv`
     a.click()
   }
 
@@ -1841,9 +1864,22 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
                   {r.notes?<span title={r.notes} style={{ fontSize:12,color:B.darkSoft,fontStyle:'italic',cursor:'help',display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:140 }}>{r.notes}</span>:<span style={{ color:B.grayLight }}>—</span>}
                 </td>
                 <td style={S.td}>
-                  <span onClick={async()=>{ const next=r.status==='confirmed'?'seated':r.status==='seated'?'cancelled':'confirmed'; await updateBreakfastReservation(r.id,{status:next}); onRefresh() }} style={{ background:r.status==='cancelled'?B.redLight:r.status==='seated'?'#e8f5e9':'#fff3e0', color:r.status==='cancelled'?B.red:r.status==='seated'?'#2e7d32':'#e65100', padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, cursor:'pointer', userSelect:'none', title:'Click to change status' }}>
-                    {r.status==='cancelled'?'❌ Cancelled':r.status==='seated'?'✅ Seated':'🟡 Confirmed'}
-                  </span>
+                  <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+                    {r.status!=='cancelled'&&r.status!=='no_show'&&(
+                      <span onClick={async()=>{ const next=r.status==='confirmed'?'seated':'confirmed'; await updateBreakfastReservation(r.id,{status:next}); onRefresh() }}
+                        style={{ background:r.status==='seated'?'#DBEAFE':'#D1FAE5', color:r.status==='seated'?'#1E3A8A':'#065F46', padding:'3px 12px', borderRadius:20, fontSize:11, fontWeight:700, cursor:'pointer', userSelect:'none' }}>
+                        {r.status==='seated'?'✅ Seated':'✅ Confirmed'}
+                      </span>
+                    )}
+                    {r.status==='cancelled'&&<span style={{ background:B.redLight, color:B.red, padding:'3px 12px', borderRadius:20, fontSize:11, fontWeight:700 }}>❌ Cancelled</span>}
+                    {r.status==='no_show'&&<span style={{ background:'#F3F4F6', color:'#6B7280', padding:'3px 12px', borderRadius:20, fontSize:11, fontWeight:700 }}>🚫 No-show</span>}
+                    {r.status!=='cancelled'&&r.status!=='no_show'&&(
+                      <span onClick={async()=>{ await updateBreakfastReservation(r.id,{status:'no_show'}); onRefresh() }}
+                        style={{ background:'#FEE2E2', color:'#EF4444', padding:'3px 8px', borderRadius:20, fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                        No show
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td style={{...S.td,whiteSpace:'nowrap'}}>
                   <div style={{ display:'flex', gap:6 }}>
