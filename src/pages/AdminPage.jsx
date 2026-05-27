@@ -2370,7 +2370,8 @@ function LoginPage({ onLogin }) {
 }
 
 function AdminContent({ role }) {
-  const [tab,          setTab]          = useState('dashboard')
+  const [tab,          setTab]          = useState(()=>{ try { return localStorage.getItem('uh_tab')||'dashboard' } catch { return 'dashboard' } })
+  const setTabAndSave = t => { setTab(t); try { localStorage.setItem('uh_tab', t) } catch {} }
   const [reservations, setReservations] = useState([])
   const [tables,       setTables]       = useState([])
   const [waitlist,     setWaitlist]     = useState([])
