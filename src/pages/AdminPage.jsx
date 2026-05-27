@@ -905,7 +905,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
 
 function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation, onSeated, onEarlyFree, onWalkIn, onNewRes, onRefresh }) {
   const today     = todayISO()
-  const todayRes  = reservations.filter(r=>r.date===today&&r.status!=='cancelled')
+  const todayRes  = reservations.filter(r=>r.date===selectedDate&&r.status!=='cancelled')
   const totalGuests = todayRes.reduce((s,r)=>s+r.guests,0)
   const noShow    = reservations.filter(r=>r.date===today&&r.status==='no_show').length
   const cancelled = reservations.filter(r=>r.date===today&&r.status==='cancelled').length
@@ -916,6 +916,7 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
   const [calM, setCalM] = useState(new Date().getMonth())
   const [search, setSearch] = useState('')
   const [showHidden, setShowHidden] = useState(false)
+  const [selectedDate, setSelectedDate] = useState(todayISO())
 
   const now = new Date()
   const weekDays = ['Mo','Tu','We','Th','Fr','Sa','Su']
@@ -937,7 +938,7 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
     return a.time.localeCompare(b.time)
   })
 
-  const hiddenRes = reservations.filter(r=>r.date===today&&['no_show','cancelled','completed','early_free'].includes(r.status))
+  const hiddenRes = reservations.filter(r=>r.date===selectedDate&&['no_show','cancelled','completed','early_free'].includes(r.status))
   const remaining = todayRes.filter(r=>['pending','confirmed'].includes(r.status)).length
   const remainingGuests = todayRes.filter(r=>['pending','confirmed'].includes(r.status)).reduce((s,r)=>s+r.guests,0)
 
@@ -963,9 +964,9 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
               const dayRes=reservations.filter(r=>r.date===iso&&!["cancelled","no_show"].includes(r.status))
               const isToday=iso===todayISO()
               return (
-                <div key={day} style={{ textAlign:"center", padding:"2px 1px", borderRadius:5, background:isToday?B.orange:"transparent" }}>
-                  <span style={{ fontSize:10, fontWeight:isToday?700:400, color:isToday?"#fff":B.dark }}>{day}</span>
-                  {dayRes.length>0&&<div style={{ width:3, height:3, borderRadius:"50%", background:isToday?"rgba(255,255,255,.7)":B.orange, margin:"0 auto" }}/>}
+                <div key={day} onClick={()=>setSelectedDate(iso)} style={{ textAlign:"center", padding:"2px 1px", borderRadius:5, cursor:'pointer', background:iso===selectedDate?B.orange:isToday?B.orangeLight:"transparent" }}>
+                  <span style={{ fontSize:10, fontWeight:(iso===selectedDate||isToday)?700:400, color:iso===selectedDate?"#fff":B.dark }}>{day}</span>
+                  {dayRes.length>0&&<div style={{ width:3, height:3, borderRadius:"50%", background:iso===selectedDate?"rgba(255,255,255,.7)":B.orange, margin:"0 auto" }}/>}
                 </div>
               )
             })}
@@ -1056,8 +1057,9 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
         {/* Header */}
         <div style={{ padding:'10px 16px', borderBottom:`1px solid ${B.grayLight}`, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', background:'#fff' }}>
-          <div style={{ fontSize:16, fontWeight:700, color:B.dark }}>
-            {now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+          <div style={{ fontSize:16, fontWeight:700, color:B.dark, display:'flex', alignItems:'center', gap:10 }}>
+            {new Date(selectedDate+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+            {selectedDate!==today&&<button onClick={()=>{setSelectedDate(today);setCalY(new Date().getFullYear());setCalM(new Date().getMonth())}} style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:6, background:B.orange, color:'#fff', border:'none', cursor:'pointer' }}>Today</button>}
           </div>
           <Btn onClick={onNewRes} size="sm">+ New</Btn>
           <Btn onClick={onWalkIn} variant="walkin" size="sm">🚶 Walk-in</Btn>
