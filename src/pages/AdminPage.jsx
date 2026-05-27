@@ -887,117 +887,189 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
 }
 
 
+
+
 function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation, onSeated, onEarlyFree, onWalkIn, onRefresh }) {
   const today     = todayISO()
   const todayRes  = reservations.filter(r=>r.date===today&&r.status!=='cancelled')
-  const pending   = todayRes.filter(r=>r.status==='pending').length
-  const confirmed = todayRes.filter(r=>r.status==='confirmed').length
-  const seated    = todayRes.filter(r=>r.status==='seated').length
+  const totalGuests = todayRes.reduce((s,r)=>s+r.guests,0)
   const noShow    = reservations.filter(r=>r.date===today&&r.status==='no_show').length
   const cancelled = reservations.filter(r=>r.date===today&&r.status==='cancelled').length
-  const totalGuests = todayRes.reduce((s,r)=>s+r.guests,0)
-  const activeTables = tables.filter(t=>t.is_active&&!t.is_blocked).length
 
-  // Auto no-show: check every 60s
-  useEffect(() => {
-    const check = async () => {
-      const now = new Date()
-      const nowMin = now.getHours()*60 + now.getMinutes()
-      for (const r of todayRes) {
-        if (r.status!=='pending'&&r.status!=='confirmed') continue
-        const [h,m] = r.time.split(':').map(Number)
-        const resMin = h*60+m
-        if (nowMin - resMin >= 15) {
-          await updateReservation(r.id, { status:'no_show' })
-          await sendEmail('no_show', { reservation: r })
-          // Notify waitlist
-          const next = await getNextWaiting(r.date, r.time)
-          if (next) {
-            await updateWaitlistEntry(next.id, { status:'notified', notified_at: new Date().toISOString() })
-            await sendEmail('waitlist_spot', { entry: next })
-          }
-        }
-      }
-      onRefresh()
-    }
-    const id = setInterval(check, 60_000)
-    return () => clearInterval(id)
-  }, [todayRes])
+  const [view,       setView]       = useState('diagram')
+  const [timeFilter, setTimeFilter] = useState('all')
+  const [calY, setCalY] = useState(new Date().getFullYear())
+  const [calM, setCalM] = useState(new Date().getMonth())
+  const [search, setSearch] = useState('')
 
-  const lunch  = todayRes.filter(r=>parseInt(r.time)<16)
-  const dinner = todayRes.filter(r=>parseInt(r.time)>=16)
+  const now = new Date()
+  const weekDays = ['Mo','Tu','We','Th','Fr','Sa','Su']
+  const firstDay = (new Date(calY,calM,1).getDay()+6)%7
+  const daysInMonth = new Date(calY,calM+1,0).getDate()
 
-  const Stat = ({ icon, value, label, color=B.dark }) => (
-    <div style={{ ...S.card, textAlign:'center', padding:'20px 16px' }}>
-      <div style={{ fontSize:28, marginBottom:6 }}>{icon}</div>
-      <div style={{ fontSize:28, fontWeight:700, color, fontFamily:'Playfair Display,serif' }}>{value}</div>
-      <div style={{ fontSize:12, color:B.gray, marginTop:4 }}>{label}</div>
-    </div>
-  )
+  const filteredRes = todayRes.filter(r=>{
+    if(!['pending','confirmed','seated','early_free','completed'].includes(r.status)) return false
+    if(search){ const q=search.toLowerCase(); if(!`${r.first_name} ${r.last_name||''}`.toLowerCase().includes(q)) return false }
+    if(timeFilter==='morning'){ const h=parseInt(r.time); return h>=8&&h<13 }
+    if(timeFilter==='lunch')  { const h=parseInt(r.time); return h>=13&&h<17 }
+    if(timeFilter==='evening'){ const h=parseInt(r.time); return h>=17 }
+    return true
+  }).sort((a,b)=>a.time.localeCompare(b.time))
+
+  const remaining = todayRes.filter(r=>['pending','confirmed'].includes(r.status)).length
+  const remainingGuests = todayRes.filter(r=>['pending','confirmed'].includes(r.status)).reduce((s,r)=>s+r.guests,0)
 
   return (
-    <div>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
-        <h2 style={{ fontFamily:'Playfair Display,serif', fontSize:22, color:B.dark, fontWeight:600 }}>
-          Today — {new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}
-        </h2>
-        <Btn variant="walkin" onClick={onWalkIn}>🚶 Walk-in</Btn>
-      </div>
-
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))', gap:12, marginBottom:28 }}>
-        <Stat icon="📋" value={todayRes.length} label="Today's bookings" />
-        <Stat icon="👥" value={totalGuests}      label="Guests" color={B.orange}/>
-        <Stat icon="🚫" value={`${noShow} / ${cancelled}`} label="No-show / Cancelled" color={B.red}/>
-        <Stat icon="✅" value={confirmed}        label="Confirmed" color={B.green}/>
-        <Stat icon="🪑" value={seated}           label="Seated" color={B.blue}/>
-        <Stat icon="🍽️"  value={activeTables}    label="Active tables" />
-      </div>
-
-      <div className="desktop-only"><DiagramView todayRes={todayRes} tables={tables} onEditReservation={onEditReservation} onRefresh={onRefresh}/></div>
-
-      {[['☀️ Lunch', lunch], ['🌙 Dinner', dinner]].map(([label, list]) => list.length > 0 && (
-        <div key={label} style={{ marginBottom:24 }}>
-          <h3 style={{ fontSize:13, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', color:B.gray, marginBottom:12 }}>{label}</h3>
-          <div style={{ ...S.card, padding:0, overflow:'hidden' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead>
-                <tr>{['Time','Name','Guests','Table','Status'].map(h=><th key={h} style={S.th}>{h}</th>)}<th className="hide-mobile" style={S.th}>Source</th><th className="hide-mobile" style={S.th}>Notes</th><th style={S.th}></th></tr>
-              </thead>
-              <tbody>
-                {list.sort((a,b)=>a.time.localeCompare(b.time)).map(r=>(
-                  <tr key={r.id} onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
-                    onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                    <td style={{...S.td, fontWeight:700, fontSize:15}}>{fmtTime(r.time)}</td>
-                    <td style={S.td}>
-                      <div style={{ fontWeight:700, fontSize:15, cursor:'pointer', color:B.dark }} onClick={()=>onEditReservation(r)}>{r.first_name} {r.last_name}</div>
-                      {r.merged_with && <div style={{ fontSize:11, color:'#7C3AED', fontWeight:700 }}>🔗 +{r.merged_with}</div>}
-                      <TagBadges tagIds={r.tag_ids} tags={tags}/>
-                    </td>
-                    <td style={{...S.td, fontSize:15, fontWeight:700}}>👥 {r.guests}</td>
-                    <td style={{...S.td, fontSize:15, fontWeight:700}}><TableCell r={r} tables={tables} groups={groups}/></td>
-                    <td style={S.td}><Badge status={r.status}/></td>
-                    <td className="hide-mobile" style={S.td}><span style={{ fontSize:12, color:B.gray }}>{r.is_manual?'👤 Manual':'🌐 Online'}</span></td>
-                    <td className="hide-mobile" style={{...S.td, maxWidth:150}}>{r.notes?<span title={r.notes} style={{ fontSize:12, color:B.darkSoft, fontStyle:'italic', cursor:'help', display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:140 }}>{r.notes}</span>:<span style={{ color:B.grayLight }}>—</span>}</td>
-                    <td style={{...S.td, whiteSpace:'nowrap'}}><div style={{ display:'flex', gap:4 }}><QuickActions reservation={r} onSeated={onSeated} onEarlyFree={onEarlyFree} onEdit={r=>onEditReservation(r)} onCancel={r=>updateReservation(r.id,{status:'cancelled'}).then(onRefresh)}/>{!['no_show','cancelled','completed'].includes(r.status)&&<Btn size="sm" variant="danger" onClick={()=>updateReservation(r.id,{status:'no_show'}).then(onRefresh)} style={{ fontSize:10, padding:'4px 8px' }}>NS</Btn>}</div></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <div style={{ display:'flex', gap:0, minHeight:'calc(100vh - 120px)', marginLeft:-20, marginRight:-20 }}>
+      {/* Left Sidebar */}
+      <div style={{ width:280, minWidth:280, borderRight:`1px solid ${B.grayLight}`, background:'#FAFAFA', display:'flex', flexDirection:'column' }}>
+        {/* Mini Calendar */}
+        <div style={{ padding:14, borderBottom:`1px solid ${B.grayLight}` }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+            <button onClick={()=>calM===0?(setCalY(calY-1),setCalM(11)):setCalM(calM-1)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:16, color:B.dark, padding:'2px 6px' }}>‹</button>
+            <span style={{ fontSize:12, fontWeight:700, color:B.dark }}>{MONTHS_EN[calM]} {calY}</span>
+            <button onClick={()=>calM===11?(setCalY(calY+1),setCalM(0)):setCalM(calM+1)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:16, color:B.dark, padding:'2px 6px' }}>›</button>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:1, marginBottom:3 }}>
+            {weekDays.map(d=><div key={d} style={{ textAlign:'center', fontSize:9, fontWeight:700, color:B.gray }}>{d}</div>)}
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:1 }}>
+            {Array(firstDay).fill(null).map((_,i)=><div key={"e"+i}/>)}
+            {Array(daysInMonth).fill(null).map((_,i)=>{
+              const day=i+1
+              const iso=`${calY}-${String(calM+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`
+              const dayRes=reservations.filter(r=>r.date===iso&&!["cancelled","no_show"].includes(r.status))
+              const isToday=iso===todayISO()
+              return (
+                <div key={day} style={{ textAlign:"center", padding:"2px 1px", borderRadius:5, background:isToday?B.orange:"transparent" }}>
+                  <span style={{ fontSize:10, fontWeight:isToday?700:400, color:isToday?"#fff":B.dark }}>{day}</span>
+                  {dayRes.length>0&&<div style={{ width:3, height:3, borderRadius:"50%", background:isToday?"rgba(255,255,255,.7)":B.orange, margin:"0 auto" }}/>}
+                </div>
+              )
+            })}
           </div>
         </div>
-      ))}
 
-      {todayRes.length === 0 && (
-        <div style={{ ...S.card, textAlign:'center', padding:48, color:B.gray }}>
-          <div style={{ fontSize:40, marginBottom:12 }}>📭</div>
-          <p>No reservations today</p>
+        {/* Stats */}
+        <div style={{ padding:12, borderBottom:`1px solid ${B.grayLight}` }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+            <div style={{ background:'#fff', borderRadius:8, padding:'8px 10px', border:`1px solid ${B.grayLight}` }}>
+              <div style={{ fontSize:18, fontWeight:700, color:B.dark }}>{filteredRes.length}</div>
+              <div style={{ fontSize:10, color:B.gray }}>Bookings</div>
+              <div style={{ fontSize:10, color:B.gray }}>Rem: {remaining}</div>
+            </div>
+            <div style={{ background:'#fff', borderRadius:8, padding:'8px 10px', border:`1px solid ${B.grayLight}` }}>
+              <div style={{ fontSize:18, fontWeight:700, color:B.dark }}>{totalGuests}</div>
+              <div style={{ fontSize:10, color:B.gray }}>Guests</div>
+              <div style={{ fontSize:10, color:B.gray }}>Rem: {remainingGuests}</div>
+            </div>
+          </div>
+          {(noShow>0||cancelled>0)&&<div style={{ marginTop:6, fontSize:10, color:B.gray }}>{noShow>0&&<span style={{ marginRight:6 }}>🚫 {noShow} no-show</span>}{cancelled>0&&<span>✕ {cancelled} cancelled</span>}</div>}
         </div>
-      )}
+
+        {/* Search */}
+        <div style={{ padding:'8px 12px', borderBottom:`1px solid ${B.grayLight}` }}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Search guest..."
+            style={{...S.input, fontSize:12, padding:'5px 8px'}}
+            onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
+        </div>
+
+        {/* Reservation list */}
+        <div style={{ flex:1, overflow:'auto' }}>
+          {filteredRes.length===0&&<div style={{ padding:20, textAlign:'center', fontSize:12, color:B.gray }}>No reservations</div>}
+          {filteredRes.map(r=>(
+            <div key={r.id} onClick={()=>onEditReservation(r)}
+              style={{ padding:'8px 12px', borderBottom:`1px solid ${B.grayLight}`, cursor:'pointer', background:'#fff' }}
+              onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
+              onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:2 }}>
+                <span style={{ fontWeight:700, fontSize:13, color:B.dark }}>{fmtTime(r.time)}</span>
+                <Badge status={r.status}/>
+              </div>
+              <div style={{ fontWeight:600, fontSize:14, color:B.dark }}>{r.first_name} {r.last_name||''}</div>
+              <div style={{ display:'flex', gap:8, marginTop:2, fontSize:12, color:B.gray, alignItems:'center' }}>
+                <span>👥 {r.guests}</span>
+                <TableCell r={r} tables={tables} groups={groups}/>
+              </div>
+              {r.merged_with&&<div style={{ fontSize:10, color:'#7C3AED', fontWeight:600 }}>🔗 +{r.merged_with}</div>}
+              <TagBadges tagIds={r.tag_ids} tags={tags}/>
+              <div style={{ display:'flex', gap:4, marginTop:4 }} onClick={e=>e.stopPropagation()}>
+                {(r.status==="pending"||r.status==="confirmed")&&<Btn size="sm" variant="success" onClick={()=>onSeated(r)}>▶ Seat</Btn>}
+                {r.status==="seated"&&<Btn size="sm" onClick={()=>onEarlyFree(r)} style={{ background:"#EDE9FE", color:"#7C3AED", border:"1px solid #7C3AED", fontSize:10, padding:"3px 6px" }}>🚪 Free</Btn>}
+                {!["cancelled","completed","no_show","early_free"].includes(r.status)&&<Btn size="sm" variant="danger" onClick={()=>updateReservation(r.id,{status:"no_show"}).then(onRefresh)} style={{ fontSize:10, padding:"3px 6px" }}>NS</Btn>}
+                {!["cancelled","completed","no_show","early_free"].includes(r.status)&&<Btn size="sm" variant="danger" onClick={()=>updateReservation(r.id,{status:"cancelled"}).then(onRefresh)} style={{ fontSize:10, padding:"3px 6px", background:"#FEE2E2", color:"#EF4444", border:"1px solid #FCA5A5" }}>✕</Btn>}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Walk-in button */}
+        <div style={{ padding:10, borderTop:`1px solid ${B.grayLight}` }}>
+          <Btn variant="walkin" onClick={onWalkIn} style={{ width:'100%' }}>🚶 Walk-in</Btn>
+        </div>
+      </div>
+
+      {/* Right Main Area */}
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+        {/* Header */}
+        <div style={{ padding:'10px 16px', borderBottom:`1px solid ${B.grayLight}`, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', background:'#fff' }}>
+          <div style={{ fontSize:16, fontWeight:700, color:B.dark, flex:1 }}>
+            {now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+          </div>
+          <div style={{ display:'flex', gap:4 }}>
+            {['diagram','list'].map(v=>(
+              <button key={v} onClick={()=>setView(v)} style={{ padding:'5px 12px', borderRadius:8, border:`1px solid ${view===v?B.orange:B.grayLight}`, background:view===v?B.orange:'#fff', color:view===v?'#fff':B.dark, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                {v==='diagram'?'⏱ Diagram':'☰ List'}
+              </button>
+            ))}
+          </div>
+          <div style={{ display:'flex', gap:3 }}>
+            {['all','morning','lunch','evening'].map(f=>(
+              <button key={f} onClick={()=>setTimeFilter(f)} style={{ padding:'4px 8px', borderRadius:6, border:`1px solid ${timeFilter===f?B.orange:B.grayLight}`, background:timeFilter===f?B.orangeLight:'#fff', color:timeFilter===f?B.orange:B.gray, fontSize:11, fontWeight:600, cursor:'pointer', textTransform:'capitalize' }}>
+                {f==='all'?'All':f==='morning'?'☀️':f==='lunch'?'🍽️':'🌙'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={{ flex:1, overflow:'auto' }}>
+          {view==='diagram'&&<DiagramView todayRes={filteredRes} tables={tables} onEditReservation={onEditReservation} onRefresh={onRefresh}/>}
+          {view==='list'&&(
+            <div style={{ padding:16 }}>
+              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                <thead><tr>{['Time','Name','Guests','Table','Status',''].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {filteredRes.map(r=>(
+                    <tr key={r.id} onClick={()=>onEditReservation(r)} style={{ cursor:'pointer' }}
+                      onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
+                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                      <td style={{...S.td,fontWeight:700,fontSize:15}}>{fmtTime(r.time)}</td>
+                      <td style={S.td}>
+                        <div style={{ fontWeight:700,fontSize:15 }}>{r.first_name} {r.last_name||''}</div>
+                        {r.merged_with&&<div style={{ fontSize:11,color:'#7C3AED',fontWeight:700 }}>🔗 +{r.merged_with}</div>}
+                        <TagBadges tagIds={r.tag_ids} tags={tags}/>
+                      </td>
+                      <td style={{...S.td,fontSize:15,fontWeight:600}}>👥 {r.guests}</td>
+                      <td style={{...S.td,fontSize:15,fontWeight:600}}><TableCell r={r} tables={tables} groups={groups}/></td>
+                      <td style={S.td}><Badge status={r.status}/></td>
+                      <td style={{...S.td,whiteSpace:'nowrap'}} onClick={e=>e.stopPropagation()}>
+                        <div style={{ display:'flex', gap:4 }}>
+                          <QuickActions reservation={r} onSeated={onSeated} onEarlyFree={onEarlyFree} onEdit={onEditReservation} onCancel={r=>updateReservation(r.id,{status:'cancelled'}).then(onRefresh)}/>
+                          {!['no_show','cancelled','completed'].includes(r.status)&&<Btn size="sm" variant="danger" onClick={()=>updateReservation(r.id,{status:'no_show'}).then(onRefresh)} style={{ fontSize:10,padding:'4px 8px' }}>NS</Btn>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
-
-// ─── Tab: Reservations ────────────────────────────────────────────────────────
 
 function ExpandableNote({ note }) {
   const [expanded, setExpanded] = useState(false)
