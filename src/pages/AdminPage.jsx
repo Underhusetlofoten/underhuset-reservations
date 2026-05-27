@@ -1029,7 +1029,7 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
         {hiddenRes.length > 0 && (
           <div style={{ borderTop:`1px solid ${B.grayLight}` }}>
             <button onClick={()=>setShowHidden(v=>!v)} style={{ width:'100%', padding:'8px 12px', background:'none', border:'none', cursor:'pointer', fontSize:12, color:B.gray, textAlign:'left' }}>
-              {showHidden?'▾':'▸'} {showHidden?'Hide':'Show'} cancelled & no-show ({hiddenRes.length})
+              {showHidden?'▾ Hide':'▸ Show'} expired/cancelled bookings ({hiddenRes.length})
             </button>
             {showHidden && hiddenRes.map(r=>(
               <div key={r.id} onClick={()=>onEditReservation(r)}
