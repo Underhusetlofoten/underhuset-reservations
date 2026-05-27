@@ -47,7 +47,7 @@ export async function getCancelledReservations() {
     .select('*, table:tables(id,name)')
     .eq('status','cancelled')
     .is('deleted_at', null)
-    .order('date','time')
+    .order('date').order('time')
   if (error) throw error
   return data || []
 }
