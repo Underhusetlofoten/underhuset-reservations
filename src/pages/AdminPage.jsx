@@ -466,7 +466,7 @@ function ReservationForm({ initial={}, tables=[], tags=[], groups=[], onSave, on
 
 // ─── Walk-in Modal ────────────────────────────────────────────────────────────
 
-function WalkInModal({ tables, onSave, onClose, loading }) {
+function WalkInModal({ tables, groups=[], reservations=[], onSave, onClose, loading }) {
   const [guests,   setGuests]   = useState(2)
   const [tableIds, setTableIds] = useState([])
   const [name,     setName]     = useState('')
