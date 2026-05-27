@@ -799,7 +799,14 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
           {resos.map(r=>{
             const h = timeToH(r.time)
             const left = pct(h)
-            const width = Math.min(100-left, BLOCK_H/TL_R*100)
+            let blockH = BLOCK_H
+            if (r.status === 'early_free' && r.freed_at && r.seated_at) {
+              const mins = (new Date(r.freed_at) - new Date(r.seated_at)) / 60000
+              blockH = Math.max(0.25, mins / 60)
+            } else if (r.status === 'completed' && r.seated_at) {
+              blockH = 1.5
+            }
+            const width = Math.min(100-left, blockH/TL_R*100)
             const c = statusColor[r.status] || statusColor.confirmed
             const isDragging = dragging?.id === r.id
             return (
