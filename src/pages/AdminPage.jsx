@@ -2520,7 +2520,7 @@ function AdminContent({ role }) {
         {/* Desktop tabs */}
         <div className="desktop-tabs" style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
           {TABS.filter(t => t.id !== 'settings' || role === 'admin').map(t=>(
-            <button key={t.id} onClick={()=>setTab(t.id)} style={{
+            <button key={t.id} onClick={()=>setTabAndSave(t.id)} style={{
               background:tab===t.id?B.orange:'transparent', border:'none', borderRadius:8, cursor:'pointer',
               padding:'6px 12px', color:tab===t.id?'#fff':'rgba(255,255,255,.6)',
               fontSize:13, fontWeight:tab===t.id?700:400, display:'flex', alignItems:'center', gap:5,
@@ -2537,7 +2537,7 @@ function AdminContent({ role }) {
           {mobileMenu && (
             <div style={{ position:'absolute', top:'110%', right:0, background:'#3C4242', borderRadius:12, boxShadow:'0 8px 30px rgba(0,0,0,.3)', zIndex:9999, minWidth:200, padding:8 }}>
               {TABS.filter(t => t.id !== 'stats' && (t.id !== 'settings' || role === 'admin')).map(t=>(
-                <button key={t.id} onClick={()=>{ setTab(t.id); setMobileMenu(false) }} style={{
+                <button key={t.id} onClick={()=>{ setTabAndSave(t.id); setMobileMenu(false) }} style={{
                   display:'flex', alignItems:'center', gap:10, width:'100%', background:tab===t.id?B.orange:'transparent',
                   border:'none', borderRadius:8, cursor:'pointer', padding:'12px 16px',
                   color:tab===t.id?'#fff':'rgba(255,255,255,.8)', fontSize:15, fontWeight:tab===t.id?700:400,
