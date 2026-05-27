@@ -1716,6 +1716,30 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
     a.click()
   }
 
+  const exportInvoice = () => {
+    const rows = [
+      ['Date','Hotel','Contact','Email','Phone','PAX (billable)','Cancelled','Notes','Staff'],
+      ...filtered.map(r=>[
+        r.date, r.hotel, r.contact_name, r.contact_email||'', r.contact_phone||'',
+        (r.status==='seated'||r.status==='completed'||r.status==='no_show') ? r.guests : '',
+        r.status==='cancelled' ? r.guests : '',
+        r.notes||'', r.staff_names||''
+      ])
+    ]
+    const completed = filtered.filter(r=>r.status==='seated'||r.status==='completed')
+    const noshow    = filtered.filter(r=>r.status==='no_show')
+    const cancelled = filtered.filter(r=>r.status==='cancelled')
+    const totalPax  = completed.reduce((s,r)=>s+r.guests,0) + noshow.reduce((s,r)=>s+r.guests,0)
+    rows.push([])
+    rows.push(['TOTAL','','','','',totalPax, cancelled.reduce((s,r)=>s+r.guests,0),'',''])
+    const csv = rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n')
+    const blob = new Blob(['\ufeff'+csv], { type:'text/csv;charset=utf-8' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `invoice-${hotelFilter||'all'}-${dateFilter||'all'}.csv`
+    a.click()
+  }
+
   const BFORM_EMPTY = { date:'', guests:1, hotel:'', contact_name:'', contact_email:'', contact_phone:'', notes:'', staff_names:'', status:'confirmed' }
 
   const BreakfastForm = ({ initial={}, onSave, onCancel }) => {
@@ -1791,6 +1815,7 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
         <div style={{ display:'flex', gap:8 }}>
           <Btn size="sm" variant="secondary" onClick={()=>setDateFilter(todayISO())} style={{background: dateFilter===todayISO()?'#F99D54':'', color: dateFilter===todayISO()?'#fff':''}}>📅 Today</Btn>
           <Btn size="sm" variant="secondary" onClick={exportCSV}>⬇ Export CSV</Btn>
+          <Btn size="sm" variant="secondary" onClick={exportInvoice}>📄 Invoice</Btn>
           <Btn size="sm" onClick={()=>setNewModal(true)}>+ New reservation</Btn>
         </div>
       </div>
