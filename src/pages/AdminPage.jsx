@@ -676,7 +676,13 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
   const allTables = [...interiorTables, ...exteriorTables]
 
   const activeRes = todayRes.filter(r=>!['no_show','cancelled'].includes(r.status))
-  const getResForTable = (tableId) => activeRes.filter(r => r.table_id === tableId)
+  const getResForTable = (tableId) => activeRes.filter(r => {
+    if (r.table_id === tableId) return true
+    try {
+      const ids = typeof r.table_ids === 'string' ? JSON.parse(r.table_ids) : (r.table_ids||[])
+      return ids.includes(tableId)
+    } catch { return false }
+  })
 
   const timeToH = t => { const [h,m] = t.split(':').map(Number); return h + m/60 }
   const pct = h => Math.max(0, Math.min(100, (h - TL_S) / TL_R * 100))
