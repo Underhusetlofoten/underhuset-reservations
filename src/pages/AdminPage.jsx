@@ -901,6 +901,7 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
   const [calY, setCalY] = useState(new Date().getFullYear())
   const [calM, setCalM] = useState(new Date().getMonth())
   const [search, setSearch] = useState('')
+  const [showHidden, setShowHidden] = useState(false)
 
   const now = new Date()
   const weekDays = ['Mo','Tu','We','Th','Fr','Sa','Su']
@@ -916,6 +917,7 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
     return true
   }).sort((a,b)=>a.time.localeCompare(b.time))
 
+  const hiddenRes = reservations.filter(r=>r.date===today&&['no_show','cancelled'].includes(r.status))
   const remaining = todayRes.filter(r=>['pending','confirmed'].includes(r.status)).length
   const remainingGuests = todayRes.filter(r=>['pending','confirmed'].includes(r.status)).reduce((s,r)=>s+r.guests,0)
 
@@ -1003,6 +1005,27 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
           ))}
         </div>
 
+        {/* Hidden reservations toggle */}
+        {hiddenRes.length > 0 && (
+          <div style={{ borderTop:`1px solid ${B.grayLight}` }}>
+            <button onClick={()=>setShowHidden(v=>!v)} style={{ width:'100%', padding:'8px 12px', background:'none', border:'none', cursor:'pointer', fontSize:12, color:B.gray, textAlign:'left' }}>
+              {showHidden?'▾':'▸'} {showHidden?'Hide':'Show'} cancelled & no-show ({hiddenRes.length})
+            </button>
+            {showHidden && hiddenRes.map(r=>(
+              <div key={r.id} onClick={()=>onEditReservation(r)}
+                style={{ padding:'8px 12px', borderTop:`1px solid ${B.grayLight}`, cursor:'pointer', background:'#FAFAFA', opacity:0.7 }}
+                onMouseEnter={e=>e.currentTarget.style.opacity='1'}
+                onMouseLeave={e=>e.currentTarget.style.opacity='0.7'}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <span style={{ fontWeight:700, fontSize:13, color:B.gray }}>{fmtTime(r.time)}</span>
+                  <Badge status={r.status}/>
+                </div>
+                <div style={{ fontWeight:600, fontSize:13, color:B.gray }}>{r.first_name} {r.last_name||''}</div>
+                <div style={{ fontSize:11, color:B.gray }}>👥 {r.guests}</div>
+              </div>
+            ))}
+          </div>
+        )}
         {/* Walk-in button */}
         <div style={{ padding:10, borderTop:`1px solid ${B.grayLight}` }}>
           <Btn variant="walkin" onClick={onWalkIn} style={{ width:'100%' }}>🚶 Walk-in</Btn>
