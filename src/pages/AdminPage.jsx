@@ -1770,26 +1770,6 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
         </div>
       </div>
 
-      {/* Hotel links */}
-      <div style={{ ...S.card, marginBottom:20, background:B.blueLight }}>
-        <div style={{ fontSize:12, fontWeight:700, color:B.blue, marginBottom:10, letterSpacing:'.05em', textTransform:'uppercase' }}>🔗 Hotel booking links</div>
-        <div style={{ display:'grid', gap:8 }}>
-          {[
-            { label:'Ingrid',    path:'/ingrid' },
-            { label:'Marta',     path:'/marta'  },
-            { label:'Sakrisøy',  path:'/sakrisoy' },
-            { label:'General',   path:'/page' },
-          ].map(({ label, path })=>(
-            <div key={path} style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-              <span style={{ fontSize:12, color:B.blue, fontWeight:600, minWidth:100 }}>{label}</span>
-              <code style={{ fontSize:12, color:B.dark, background:'#fff', padding:'4px 10px', borderRadius:6, flex:1, minWidth:160 }}>
-                {window.location.origin}{path}
-              </code>
-              <Btn size="sm" onClick={()=>navigator.clipboard.writeText(window.location.origin+path)}>Copy</Btn>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* Stats by hotel */}
       {Object.keys(byHotel).length > 0 && (
@@ -2291,6 +2271,28 @@ function SettingsTab({ settings, onSave, tags=[], onTagsChange }) {
           <h3 style={{ fontSize:15, fontWeight:700, color:B.dark, marginBottom:16 }}>🏷️ Tags</h3>
           <TagManager tags={tags} onTagsChange={onTagsChange}/>
         </div>
+
+      {/* Booking links */}
+      <div style={{ ...S.card, marginBottom:20 }}>
+        <h3 style={{ fontSize:15, fontWeight:700, color:B.dark, marginBottom:16 }}>🔗 Booking page links</h3>
+        <div style={{ display:'grid', gap:8 }}>
+          {[
+            { label:'Ingrid',    path:'/ingrid' },
+            { label:'Marta',     path:'/marta'  },
+            { label:'Sakrisøy',  path:'/sakrisoy' },
+            { label:'General',   path:'/page' },
+            { label:'Breakfast', path:'/breakfast' },
+          ].map(({ label, path })=>(
+            <div key={path} style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <span style={{ fontSize:13, fontWeight:600, color:B.dark, minWidth:100 }}>{label}</span>
+              <code style={{ fontSize:12, color:B.dark, background:'#F3F4F6', padding:'4px 10px', borderRadius:6, flex:1, minWidth:160 }}>
+                {window.location.origin}{path}
+              </code>
+              <Btn size="sm" onClick={()=>navigator.clipboard.writeText(window.location.origin+path)}>Copy</Btn>
+            </div>
+          ))}
+        </div>
+      </div>
 
         <div><Btn onClick={save}>{saved?'✓ Saved':'Save changes'}</Btn></div>
       </div>
