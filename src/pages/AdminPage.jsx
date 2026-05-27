@@ -928,7 +928,14 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
     if(timeFilter==='lunch')  { const h=parseInt(r.time); return h>=13&&h<17 }
     if(timeFilter==='evening'){ const h=parseInt(r.time); return h>=17 }
     return true
-  }).sort((a,b)=>a.time.localeCompare(b.time))
+  }).sort((a,b)=>{
+    const aCompleted = a.status==='completed'
+    const bCompleted = b.status==='completed'
+    if (aCompleted && !bCompleted) return 1
+    if (!aCompleted && bCompleted) return -1
+    if (aCompleted && bCompleted) return new Date(a.seated_at||0) - new Date(b.seated_at||0)
+    return a.time.localeCompare(b.time)
+  })
 
   const hiddenRes = reservations.filter(r=>r.date===today&&['no_show','cancelled'].includes(r.status))
   const remaining = todayRes.filter(r=>['pending','confirmed'].includes(r.status)).length
