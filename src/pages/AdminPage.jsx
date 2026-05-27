@@ -474,12 +474,9 @@ function WalkInModal({ tables, groups=[], reservations=[], onSave, onClose, load
   const now = new Date()
   const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(Math.floor(now.getMinutes()/15)*15).padStart(2,'0')}:00`
 
-  const activeTables = tables.filter(t=>t.is_active)
-  const tableOptions = [
-    { value:'', label:'Not assigned' },
-    ...activeTables.filter(t=>t.zone==='interior').map(t=>({ value:t.id, label:`${t.name} (interior, ${t.capacity}p)` })),
-    ...activeTables.filter(t=>t.zone==='exterior').map(t=>({ value:t.id, label:`${t.name} (exterior, ${t.capacity}p)` })),
-  ]
+  const occupiedIds = reservations
+    .filter(r=>['seated','confirmed','pending'].includes(r.status))
+    .map(r=>r.table_id).filter(Boolean)
 
   const save = () => onSave({
     date: todayISO(), time: timeStr, guests,
