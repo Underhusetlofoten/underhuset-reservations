@@ -1035,21 +1035,21 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
         {/* Header */}
         <div style={{ padding:'10px 16px', borderBottom:`1px solid ${B.grayLight}`, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', background:'#fff' }}>
-          <div style={{ fontSize:16, fontWeight:700, color:B.dark, flex:1 }}>
+          <div style={{ fontSize:16, fontWeight:700, color:B.dark }}>
             {now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
           </div>
-          <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
+          <Btn onClick={onNewRes} size="sm">+ New</Btn>
+          <Btn onClick={onWalkIn} variant="walkin" size="sm">🚶 Walk-in</Btn>
+          <div style={{ flex:1 }}/>
+          <div style={{ display:'flex', gap:4, alignItems:'center' }}>
             {['diagram','list'].map(v=>(
               <button key={v} onClick={()=>setView(v)} style={{ padding:'5px 12px', borderRadius:8, border:`1px solid ${view===v?B.orange:B.grayLight}`, background:view===v?B.orange:'#fff', color:view===v?'#fff':B.dark, fontSize:12, fontWeight:600, cursor:'pointer' }}>
                 {v==='diagram'?'⏱ Diagram':'☰ List'}
               </button>
             ))}
-            <Btn onClick={onWalkIn} variant="walkin" size="sm">🚶 Walk-in</Btn>
-            <Btn onClick={onNewRes} size="sm">+ New reservation</Btn>
-          </div>
-          <div style={{ display:'flex', gap:3 }}>
-            {[['all','All'],['lunch','🍽️ Lunch'],['evening','🌙 Dinner']].map(([f,label])=>(
-              <button key={f} onClick={()=>setTimeFilter(f)} style={{ padding:'4px 8px', borderRadius:6, border:`1px solid ${timeFilter===f?B.orange:B.grayLight}`, background:timeFilter===f?B.orangeLight:'#fff', color:timeFilter===f?B.orange:B.gray, fontSize:11, fontWeight:600, cursor:'pointer' }}>
+            <div style={{ width:1, height:20, background:B.grayLight, margin:'0 4px' }}/>
+            {[['all','All'],['lunch','🍽️'],['evening','🌙']].map(([f,label])=>(
+              <button key={f} onClick={()=>setTimeFilter(f)} style={{ padding:'4px 8px', borderRadius:6, border:`1px solid ${timeFilter===f?B.orange:B.grayLight}`, background:timeFilter===f?B.orangeLight:'#fff', color:timeFilter===f?B.orange:B.gray, fontSize:13, fontWeight:600, cursor:'pointer' }}>
                 {label}
               </button>
             ))}
