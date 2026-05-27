@@ -906,6 +906,8 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
 function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation, onSeated, onEarlyFree, onWalkIn, onNewRes, onRefresh }) {
   const today     = todayISO()
   const totalGuests = todayRes.reduce((s,r)=>s+r.guests,0)
+  const [selectedDate, setSelectedDate] = useState(todayISO())
+  const todayRes  = reservations.filter(r=>r.date===selectedDate&&r.status!=='cancelled')
   const noShow    = reservations.filter(r=>r.date===selectedDate&&r.status==='no_show').length
   const cancelled = reservations.filter(r=>r.date===selectedDate&&r.status==='cancelled').length
 
@@ -915,8 +917,6 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
   const [calM, setCalM] = useState(new Date().getMonth())
   const [search, setSearch] = useState('')
   const [showHidden, setShowHidden] = useState(false)
-  const [selectedDate, setSelectedDate] = useState(todayISO())
-  const todayRes  = reservations.filter(r=>r.date===selectedDate&&r.status!=='cancelled')
 
   const now = new Date()
   const weekDays = ['Mo','Tu','We','Th','Fr','Sa','Su']
