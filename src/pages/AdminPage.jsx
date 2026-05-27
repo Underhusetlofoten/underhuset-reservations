@@ -889,7 +889,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
 
 
 
-function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation, onSeated, onEarlyFree, onWalkIn, onRefresh }) {
+function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation, onSeated, onEarlyFree, onWalkIn, onNewRes, onRefresh }) {
   const today     = todayISO()
   const todayRes  = reservations.filter(r=>r.date===today&&r.status!=='cancelled')
   const totalGuests = todayRes.reduce((s,r)=>s+r.guests,0)
@@ -911,7 +911,6 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
   const filteredRes = todayRes.filter(r=>{
     if(!['pending','confirmed','seated','early_free','completed'].includes(r.status)) return false
     if(search){ const q=search.toLowerCase(); if(!`${r.first_name} ${r.last_name||''}`.toLowerCase().includes(q)) return false }
-    if(timeFilter==='morning'){ const h=parseInt(r.time); return h>=8&&h<13 }
     if(timeFilter==='lunch')  { const h=parseInt(r.time); return h>=13&&h<17 }
     if(timeFilter==='evening'){ const h=parseInt(r.time); return h>=17 }
     return true
@@ -1039,17 +1038,19 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
           <div style={{ fontSize:16, fontWeight:700, color:B.dark, flex:1 }}>
             {now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
           </div>
-          <div style={{ display:'flex', gap:4 }}>
+          <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
             {['diagram','list'].map(v=>(
               <button key={v} onClick={()=>setView(v)} style={{ padding:'5px 12px', borderRadius:8, border:`1px solid ${view===v?B.orange:B.grayLight}`, background:view===v?B.orange:'#fff', color:view===v?'#fff':B.dark, fontSize:12, fontWeight:600, cursor:'pointer' }}>
                 {v==='diagram'?'⏱ Diagram':'☰ List'}
               </button>
             ))}
+            <Btn onClick={onWalkIn} variant="walkin" size="sm">🚶 Walk-in</Btn>
+            <Btn onClick={onNewRes} size="sm">+ New reservation</Btn>
           </div>
           <div style={{ display:'flex', gap:3 }}>
-            {['all','morning','lunch','evening'].map(f=>(
-              <button key={f} onClick={()=>setTimeFilter(f)} style={{ padding:'4px 8px', borderRadius:6, border:`1px solid ${timeFilter===f?B.orange:B.grayLight}`, background:timeFilter===f?B.orangeLight:'#fff', color:timeFilter===f?B.orange:B.gray, fontSize:11, fontWeight:600, cursor:'pointer', textTransform:'capitalize' }}>
-                {f==='all'?'All':f==='morning'?'☀️':f==='lunch'?'🍽️':'🌙'}
+            {[['all','All'],['lunch','🍽️ Lunch'],['evening','🌙 Dinner']].map(([f,label])=>(
+              <button key={f} onClick={()=>setTimeFilter(f)} style={{ padding:'4px 8px', borderRadius:6, border:`1px solid ${timeFilter===f?B.orange:B.grayLight}`, background:timeFilter===f?B.orangeLight:'#fff', color:timeFilter===f?B.orange:B.gray, fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                {label}
               </button>
             ))}
           </div>
@@ -2545,7 +2546,7 @@ function AdminContent({ role }) {
             {tab==='dashboard'    && <Dashboard reservations={reservations} tables={tables} tags={tags} groups={groups}
               onEditReservation={r=>setEditModal(r)}
               onSeated={handleSeated} onEarlyFree={handleEarlyFree}
-              onWalkIn={()=>setWalkInModal(true)} onRefresh={loadAll}/>}
+              onWalkIn={()=>setWalkInModal(true)} onNewRes={()=>setNewModal(true)} onRefresh={loadAll}/>}
             {tab==='reservations' && <>
               <ReservationsList reservations={reservations} tables={tables} tags={tags} groups={groups}
                 onNew={()=>setNewModal(true)} onEdit={r=>setEditModal(r)} onDelete={r=>setDeleteModal(r)}
