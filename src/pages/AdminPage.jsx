@@ -2364,6 +2364,7 @@ function AdminContent({ role }) {
   const [settings,     setSettings]     = useState({})
   const [loading,      setLoading]      = useState(true)
   const [newModal,     setNewModal]     = useState(false)
+  const [todayNewModal, setTodayNewModal] = useState(false)
   const [editModal,    setEditModal]    = useState(null)
   const [deleteModal,  setDeleteModal]  = useState(null)
   const [walkInModal,  setWalkInModal]  = useState(false)
@@ -2553,7 +2554,7 @@ function AdminContent({ role }) {
             {tab==='dashboard'    && <Dashboard reservations={reservations} tables={tables} tags={tags} groups={groups}
               onEditReservation={r=>setEditModal(r)}
               onSeated={handleSeated} onEarlyFree={handleEarlyFree}
-              onWalkIn={()=>setWalkInModal(true)} onNewRes={()=>setNewModal(true)} onRefresh={loadAll}/>}
+              onWalkIn={()=>setWalkInModal(true)} onNewRes={()=>setTodayNewModal(true)} onRefresh={loadAll}/>}
             {tab==='reservations' && <>
               <ReservationsList reservations={reservations} tables={tables} tags={tags} groups={groups}
                 onNew={()=>setNewModal(true)} onEdit={r=>setEditModal(r)} onDelete={r=>setDeleteModal(r)}
