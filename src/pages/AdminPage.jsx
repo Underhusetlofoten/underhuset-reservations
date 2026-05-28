@@ -2522,7 +2522,7 @@ function AdminContent({ role }) {
         table_ids: f.table_ids||[],
         is_manual:true })
       if (settings.email_confirmation==='true') await sendEmail('confirmation', { reservation:r })
-      setNewModal(false); loadAll()
+      setNewModal(false); setTodayNewModal(false); loadAll()
     } finally { setSaving(false) }
   }
 
