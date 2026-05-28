@@ -372,7 +372,7 @@ function GuestAutocomplete({ value, onChange, onSelect }) {
   )
 }
 
-function ReservationForm({ initial={}, tables=[], tags=[], groups=[], onSave, onCancel, loading }) {
+function ReservationForm({ initial={}, tables=[], tags=[], groups=[], reservations=[], onSave, onCancel, loading }) {
   const initTableIds = initial.table_ids || (initial.table_id ? [initial.table_id] : [])
   const initTagIds = (() => {
     try {
@@ -390,10 +390,25 @@ function ReservationForm({ initial={}, tables=[], tags=[], groups=[], onSave, on
 
   useEffect(() => {
     if (!f.date || !f.time) { setOccupiedIds([]); return }
-    getOccupiedTablesForSlot(f.date, f.time, initial.id||null).then(ids => {
-      setOccupiedIds(ids)
+    const [sh, sm] = f.time.split(':').map(Number)
+    const slotStart = sh + sm/60
+    const slotEnd = slotStart + 1.5
+    const occupied = new Set()
+    reservations.filter(r=>
+      r.date===f.date &&
+      r.id !== (initial.id||null) &&
+      !['cancelled','early_free','completed','no_show'].includes(r.status)
+    ).forEach(r=>{
+      const [rh,rm] = r.time.split(':').map(Number)
+      const rStart = rh + rm/60
+      const rEnd = rStart + 1.5
+      if (slotStart < rEnd && slotEnd > rStart) {
+        if (r.table_id) occupied.add(r.table_id)
+        try { (JSON.parse(r.table_ids||'[]')).forEach(id=>occupied.add(id)) } catch {}
+      }
     })
-  }, [f.date, f.time, initial.id])
+    setOccupiedIds([...occupied])
+  }, [f.date, f.time, initial.id, reservations])
 
   const valid = f.date && (f.time || f.custom_time) && f.guests && f.first_name && f.email && f.phone && f.table_ids && f.table_ids.length > 0
 
@@ -2715,9 +2730,9 @@ function AdminContent({ role }) {
         )}
       </div>
 
-      {todayNewModal && <Modal title="New manual reservation" onClose={()=>setTodayNewModal(false)}><ReservationForm initial={{ date:todayISO() }} tables={tables} tags={tags} groups={groups} onSave={handleCreate} onCancel={()=>setTodayNewModal(false)} loading={saving}/></Modal>}
-      {newModal    && <Modal title="New manual reservation" onClose={()=>setNewModal(false)}><ReservationForm tables={tables} tags={tags} groups={groups} onSave={handleCreate} onCancel={()=>setNewModal(false)} loading={saving}/></Modal>}
-      {editModal   && <Modal title="Edit reservation" onClose={()=>setEditModal(null)}><ReservationForm initial={{...editModal, time:fmtTime(editModal.time), table_ids:editModal.table_ids||[]}} tables={tables} tags={tags} groups={groups} onSave={handleUpdate} onCancel={()=>setEditModal(null)} loading={saving}/></Modal>}
+      {todayNewModal && <Modal title="New manual reservation" onClose={()=>setTodayNewModal(false)}><ReservationForm initial={{ date:todayISO() }} tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleCreate} onCancel={()=>setTodayNewModal(false)} loading={saving}/></Modal>}
+      {newModal    && <Modal title="New manual reservation" onClose={()=>setNewModal(false)}><ReservationForm tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleCreate} onCancel={()=>setNewModal(false)} loading={saving}/></Modal>}
+      {editModal   && <Modal title="Edit reservation" onClose={()=>setEditModal(null)}><ReservationForm initial={{...editModal, time:fmtTime(editModal.time), table_ids:editModal.table_ids||[]}} tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleUpdate} onCancel={()=>setEditModal(null)} loading={saving}/></Modal>}
       {deleteModal && <Confirm message={`Delete reservation for ${deleteModal.first_name} ${deleteModal.last_name} (${fmtDate(deleteModal.date)}, ${fmtTime(deleteModal.time)})?`} onYes={handleDelete} onNo={()=>setDeleteModal(null)}/>}
       {walkInModal && <WalkInModal tables={tables} groups={groups} reservations={reservations.filter(r=>r.date===todayISO())} onSave={handleWalkIn} onClose={()=>setWalkInModal(false)} loading={saving}/>}
     </div>
