@@ -296,26 +296,34 @@ export async function autoAssignTable(date, time, guests) {
   return available[0] || null
 }
 
-export async function getOccupiedTablesForSlot(date, time) {
+export async function getOccupiedTablesForSlot(date, time, excludeId=null) {
   const { data } = await supabase
     .from('reservations')
-    .select('table_id, time')
+    .select('id, table_id, table_ids, time')
     .eq('date', date)
     .not('status', 'in', '("cancelled","early_free","completed","no_show")')
-    .not('table_id', 'is', null)
 
   const [sh, sm] = time.replace(':00','').split(':').map(Number)
   const slotStart = sh + sm / 60
   const slotEnd   = slotStart + 1.5
 
-  return (data || [])
+  const occupiedIds = new Set()
+  ;(data || [])
+    .filter(r => r.id !== excludeId)
     .filter(r => {
       const [rh, rm] = r.time.split(':').map(Number)
       const resStart = rh + rm / 60
       const resEnd   = resStart + 1.5
       return slotStart < resEnd && slotEnd > resStart
     })
-    .map(r => r.table_id)
+    .forEach(r => {
+      if (r.table_id) occupiedIds.add(r.table_id)
+      try {
+        const ids = typeof r.table_ids === 'string' ? JSON.parse(r.table_ids) : (r.table_ids||[])
+        ids.forEach(id => occupiedIds.add(id))
+      } catch {}
+    })
+  return [...occupiedIds]
 }
 
 // ─── Emails (via /api routes) ─────────────────────────────────────────────────

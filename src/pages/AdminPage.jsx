@@ -390,8 +390,8 @@ function ReservationForm({ initial={}, tables=[], tags=[], groups=[], onSave, on
 
   useEffect(() => {
     if (!f.date || !f.time) { setOccupiedIds([]); return }
-    getOccupiedTablesForSlot(f.date, f.time).then(ids => {
-      setOccupiedIds(ids.filter(id=>!initTableIds.includes(id)))
+    getOccupiedTablesForSlot(f.date, f.time, initial.id||null).then(ids => {
+      setOccupiedIds(ids)
     })
   }, [f.date, f.time])
 
