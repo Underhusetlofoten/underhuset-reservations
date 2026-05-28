@@ -393,7 +393,7 @@ function ReservationForm({ initial={}, tables=[], tags=[], groups=[], onSave, on
     getOccupiedTablesForSlot(f.date, f.time, initial.id||null).then(ids => {
       setOccupiedIds(ids)
     })
-  }, [f.date, f.time])
+  }, [f.date, f.time, initial.id])
 
   const valid = f.date && (f.time || f.custom_time) && f.guests && f.first_name && f.email && f.phone && f.table_ids && f.table_ids.length > 0
 
