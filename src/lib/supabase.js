@@ -11,7 +11,7 @@ export async function getReservations({ date, status } = {}) {
     .from('reservations')
     .select('*, table:tables(id,name,zone,capacity)')
     .is('deleted_at', null)
-    .not('is_absorbed', 'is', true)
+    .neq('is_absorbed', true)
     .order('date').order('time')
   if (date)   q = q.eq('date', date)
   if (status) q = q.eq('status', status)
@@ -39,6 +39,17 @@ export async function updateReservation(id, payload) {
     .single()
   if (error) throw error
   return data
+}
+
+export async function getCancelledReservations() {
+  const { data, error } = await supabase
+    .from('reservations')
+    .select('*, table:tables(id,name)')
+    .eq('status','cancelled')
+    .is('deleted_at', null)
+    .order('date').order('time')
+  if (error) throw error
+  return data || []
 }
 
 export async function getDeletedReservations() {
@@ -164,6 +175,28 @@ export async function setSetting(key, value) {
   if (error) throw error
 }
 
+// ─── Guest Search ─────────────────────────────────────────────────────────────
+
+export async function searchGuests(query) {
+  if (!query || query.length < 2) return []
+  const { data, error } = await supabase
+    .from('reservations')
+    .select('first_name, last_name, email, phone, contact_person')
+    .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(20)
+  if (error) return []
+  // Deduplicate by email
+  const seen = new Set()
+  return (data||[]).filter(r => {
+    const key = r.email || `${r.first_name}${r.last_name}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 // ─── Tags ─────────────────────────────────────────────────────────────────────
 
 export async function getTags() {
@@ -263,26 +296,34 @@ export async function autoAssignTable(date, time, guests) {
   return available[0] || null
 }
 
-export async function getOccupiedTablesForSlot(date, time) {
+export async function getOccupiedTablesForSlot(date, time, excludeId=null) {
   const { data } = await supabase
     .from('reservations')
-    .select('table_id, time')
+    .select('id, table_id, table_ids, time')
     .eq('date', date)
     .not('status', 'in', '("cancelled","early_free","completed","no_show")')
-    .not('table_id', 'is', null)
 
   const [sh, sm] = time.replace(':00','').split(':').map(Number)
   const slotStart = sh + sm / 60
   const slotEnd   = slotStart + 1.5
 
-  return (data || [])
+  const occupiedIds = new Set()
+  ;(data || [])
+    .filter(r => r.id !== excludeId)
     .filter(r => {
       const [rh, rm] = r.time.split(':').map(Number)
       const resStart = rh + rm / 60
       const resEnd   = resStart + 1.5
       return slotStart < resEnd && slotEnd > resStart
     })
-    .map(r => r.table_id)
+    .forEach(r => {
+      if (r.table_id) occupiedIds.add(r.table_id)
+      try {
+        const ids = typeof r.table_ids === 'string' ? JSON.parse(r.table_ids) : (r.table_ids||[])
+        ids.forEach(id => occupiedIds.add(id))
+      } catch {}
+    })
+  return [...occupiedIds]
 }
 
 // ─── Emails (via /api routes) ─────────────────────────────────────────────────

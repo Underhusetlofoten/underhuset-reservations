@@ -25,7 +25,7 @@ export const STATUS_COLOR = {
   pending:    { bg: '#FDF4EA', text: '#E0A852', label: 'Pending'    },
   confirmed:  { bg: '#E8F5EE', text: '#52A882', label: 'Confirmed'  },
   seated:     { bg: '#EAF0FD', text: '#5278E0', label: 'Seated'     },
-  early_free: { bg: '#EDE9FE', text: '#7C3AED', label: 'Early free' },
+  early_free: { bg: '#F3F4F6', text: '#6B7280', label: 'Early free' },
   completed:  { bg: '#E2E6E6', text: '#5A6060', label: 'Completed'  },
   cancelled:  { bg: '#FDEAEA', text: '#E05252', label: 'Cancelled'  },
   no_show:    { bg: '#E2E6E6', text: '#8A8F8F', label: 'No show'    },

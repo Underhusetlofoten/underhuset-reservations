@@ -106,16 +106,17 @@ function waitlistSpotEmail(e) {
 
 function noShowEmail(r) {
   return baseEmail(`
-    <h2 style="color:#3C4242;margin:0 0 8px">Reservation Not Honoured</h2>
-    <p style="color:#8A8F8F;margin:0 0 24px;font-size:14px">We're sorry we couldn't accommodate you today.</p>
+    <h2 style="color:#3C4242;margin:0 0 8px">We missed you today 🍽️</h2>
+    <p style="color:#8A8F8F;margin:0 0 24px;font-size:14px">We had a table waiting for you at Underhuset — hopefully everything is alright on your end!</p>
     <div class="detail-row"><span class="detail-label">📅 Date</span><span class="detail-value">${fmtDate(r.date)}</span></div>
     <div class="detail-row"><span class="detail-label">⏰ Time</span><span class="detail-value">${fmtTime(r.time)}</span></div>
-    <p style="color:#8A8F8F;font-size:14px;margin-top:20px">Your reservation has been marked as no-show as we did not receive you within 15 minutes of your booking time. We hope to see you next time!</p>
-    <center><a href="${APP_URL}" class="btn btn-orange">Make a new reservation</a></center>
+    <p style="color:#8A8F8F;font-size:14px;margin-top:20px">Since we didn't hear from you, your reservation has been released. We'd love to welcome you to our little corner of Lofoten another time — the view, the food and the music will be waiting for you.</p>
+    <center><a href="${APP_URL}" class="btn btn-orange">Book your next visit</a></center>
   `)
 }
 
 function breakfastConfirmationEmail(r) {
+  const cancelUrl = `${APP_URL}/api/cancel-breakfast?token=${r.cancel_token}`
   return baseEmail(`
     <h2 style="color:#3C4242;margin:0 0 8px">Breakfast Reservation Confirmed ✓</h2>
     <p style="color:#8A8F8F;margin:0 0 24px;font-size:14px">We look forward to welcoming you for breakfast at Underhuset!</p>
@@ -126,8 +127,9 @@ function breakfastConfirmationEmail(r) {
     ${r.hotel ? `<div class="detail-row"><span class="detail-label">🏨 Property</span><span class="detail-value">${r.hotel}</span></div>` : ''}
     ${r.notes ? `<div class="detail-row"><span class="detail-label">📝 Notes</span><span class="detail-value">${r.notes}</span></div>` : ''}
     <div class="notice">
-      We look forward to seeing you! If you need to cancel, please let us know as soon as possible.
+      Need to cancel? You can do so up to the day before your reservation using the button below.
     </div>
+    ${r.cancel_token ? `<center style="margin-top:20px"><a href="${cancelUrl}" style="background:#EF4444;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px">Cancel reservation</a></center>` : ''}
   `)
 }
 

@@ -618,7 +618,7 @@ function PageWrapper({ children, breakfastLink='/breakfast' }) {
       <div style={{ position:'relative', zIndex:1, width:'100%', display:'flex', flexDirection:'column', alignItems:'center' }}>
         {/* Logo */}
         <div style={{ textAlign:'center', marginBottom:24 }}>
-          <img src="/logo.png" alt="Underhuset" style={{ height:110, objectFit:'contain', display:'block', margin:'0 auto' }}/>
+          <a href="https://underhusetlofoten.com" target="_blank" rel="noopener noreferrer"><img src="/logo.png" alt="Underhuset" style={{ height:110, objectFit:'contain', display:'block', margin:'0 auto' }}/></a>
           <div style={{ fontSize:11, color:'rgba(255,255,255,.6)', letterSpacing:'.1em', textTransform:'uppercase', marginTop:8 }}>Sakrisøy</div>
         </div>
         <div style={{ width:'100%', maxWidth:520, textAlign:'center', marginBottom:12 }}>

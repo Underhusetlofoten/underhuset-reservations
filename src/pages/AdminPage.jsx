@@ -3,8 +3,9 @@ import { supabase } from '../lib/supabase.js'
 import { B, STATUS_COLOR, ALL_TIMES, MONTHS_EN, DAYS_SHORT, DAY_KEYS, DAY_NAMES, BLOCK_HOURS } from '../brand.js'
 import StatsTab from './StatsTab.jsx'
 import {
-  getReservations, createReservation, updateReservation, deleteReservation, getDeletedReservations, restoreReservation,
+  getReservations, createReservation, updateReservation, deleteReservation, getDeletedReservations, restoreReservation, getCancelledReservations,
   getTags, createTag, updateTag, deleteTag,
+  searchGuests,
   getTableGroups, createTableGroup, updateTableGroup, deleteTableGroup,
   seatReservation, earlyFreeReservation,
   getTables, createTable, updateTable, deleteTable,
@@ -29,15 +30,48 @@ function fmtTime(t) { return t ? t.slice(0,5) : '' }
 
 // Returns label for one or multiple tables
 function tableLabel(r, tables) {
-  if (r.table_ids && r.table_ids.length > 0) {
-    const names = r.table_ids.map(id => tables.find(t=>t.id===id)?.name).filter(Boolean)
+  let ids = []
+  try { ids = typeof r.table_ids==='string' ? JSON.parse(r.table_ids) : (r.table_ids||[]) } catch {}
+  if (ids.length > 1) {
+    const names = ids.map(id => tables.find(t=>t.id===id)?.name).filter(Boolean)
     if (names.length > 0) return names.join('+')
   }
   if (r.table) return r.table.name
+  if (r.table_id) { const t = tables.find(t=>t.id===r.table_id); if(t) return t.name }
   return null
 }
 
-function TableCell({ r, tables }) {
+
+function GroupBadge({ name, tableNums }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div style={{ position:'relative', display:'inline-block' }}>
+      <span onClick={e=>{ e.stopPropagation(); setOpen(v=>!v) }}
+        style={{ background:'#EDE9FE', color:'#7C3AED', padding:'2px 10px', borderRadius:6, fontSize:15, fontWeight:700, cursor:'pointer' }}>
+        🪑 {name}
+      </span>
+      {open && (
+        <div onClick={e=>e.stopPropagation()}
+          style={{ position:'absolute', bottom:'110%', left:0, background:'#fff', border:'1px solid #E2E6E6', borderRadius:8, padding:'6px 12px', boxShadow:'0 4px 12px rgba(0,0,0,.15)', zIndex:999, whiteSpace:'nowrap', fontSize:13, color:'#3C4242' }}>
+          🪑 {tableNums}
+        </div>
+      )}
+    </div>
+  )
+}
+function TableCell({ r, tables, groups=[] }) {
+  // Check if selected tables match a group
+  const tids = r.table_ids || (r.table_id ? [r.table_id] : [])
+  const matchGroup = groups.find(g =>
+    g.is_active &&
+    (g.table_ids||[]).length > 0 &&
+    (g.table_ids||[]).length === tids.length &&
+    (g.table_ids||[]).every(id => tids.includes(id))
+  )
+  if (matchGroup) {
+    const tableNums = (matchGroup.table_ids||[]).map(id=>tables.find(t=>t.id===id)?.name).filter(Boolean).join(', ')
+    return <GroupBadge name={matchGroup.name} tableNums={tableNums}/>
+  }
   const label = tableLabel(r, tables)
   if (!label) return <span style={{ color:B.grayLight }}>—</span>
   return <span style={{ background:B.blueLight, color:B.blue, padding:'2px 8px', borderRadius:6, fontSize:15, fontWeight:700 }}>{label}</span>
@@ -152,7 +186,7 @@ function Confirm({ message, onYes, onNo, yesLabel='Delete', yesVariant='danger' 
   )
 }
 
-function QuickActions({ reservation, onSeated, onEarlyFree, onEdit }) {
+function QuickActions({ reservation, onSeated, onEarlyFree, onEdit, onCancel }) {
   const s = reservation.status
   return (
     <div style={{ display:'flex', gap:5, flexWrap:'nowrap' }}>
@@ -296,7 +330,49 @@ function TableSelector({ tables, groups=[], selectedIds, occupiedIds, onChange }
   )
 }
 
-function ReservationForm({ initial={}, tables=[], tags=[], groups=[], onSave, onCancel, loading }) {
+
+function GuestAutocomplete({ value, onChange, onSelect }) {
+  const [results, setResults] = useState([])
+  const [open, setOpen] = useState(false)
+
+  const handleChange = async (v) => {
+    onChange(v)
+    if (v.length >= 2) {
+      const guests = await searchGuests(v)
+      setResults(guests)
+      setOpen(guests.length > 0)
+    } else {
+      setResults([])
+      setOpen(false)
+    }
+  }
+
+  return (
+    <div style={{ position:'relative' }}>
+      <label style={S.label}>First name *</label>
+      <input value={value} onChange={e=>handleChange(e.target.value)}
+        onBlur={()=>setTimeout(()=>setOpen(false),150)}
+        style={S.input}
+        onFocus={e=>e.target.style.borderColor=B.orange}
+        placeholder="Type to search past guests..."/>
+      {open && results.length > 0 && (
+        <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'#fff', border:`1px solid ${B.grayLight}`, borderRadius:10, boxShadow:'0 4px 16px rgba(0,0,0,.12)', zIndex:999, maxHeight:220, overflow:'auto' }}>
+          {results.map((g,i) => (
+            <div key={i} onMouseDown={()=>{ onSelect(g); setOpen(false) }}
+              style={{ padding:'10px 14px', cursor:'pointer', borderBottom:`1px solid ${B.grayLight}`, display:'flex', flexDirection:'column', gap:2 }}
+              onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
+              onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
+              <span style={{ fontWeight:700, fontSize:13, color:B.dark }}>{g.first_name} {g.last_name||''}</span>
+              <span style={{ fontSize:11, color:B.gray }}>{g.email||''}{g.phone?' · '+g.phone:''}{g.contact_person?' · '+g.contact_person:''}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ReservationForm({ initial={}, tables=[], tags=[], groups=[], reservations=[], onSave, onCancel, loading }) {
   const initTableIds = initial.table_ids || (initial.table_id ? [initial.table_id] : [])
   const initTagIds = (() => {
     try {
@@ -314,12 +390,27 @@ function ReservationForm({ initial={}, tables=[], tags=[], groups=[], onSave, on
 
   useEffect(() => {
     if (!f.date || !f.time) { setOccupiedIds([]); return }
-    getOccupiedTablesForSlot(f.date, f.time).then(ids => {
-      setOccupiedIds(ids.filter(id=>!initTableIds.includes(id)))
+    const [sh, sm] = f.time.split(':').map(Number)
+    const slotStart = sh + sm/60
+    const slotEnd = slotStart + 1.5
+    const occupied = new Set()
+    reservations.filter(r=>
+      r.date===f.date &&
+      r.id !== (initial.id||null) &&
+      !['cancelled','early_free','completed','no_show'].includes(r.status)
+    ).forEach(r=>{
+      const [rh,rm] = r.time.split(':').map(Number)
+      const rStart = rh + rm/60
+      const rEnd = rStart + 1.5
+      if (slotStart < rEnd && slotEnd > rStart) {
+        if (r.table_id) occupied.add(r.table_id)
+        try { (JSON.parse(r.table_ids||'[]')).forEach(id=>occupied.add(id)) } catch {}
+      }
     })
-  }, [f.date, f.time])
+    setOccupiedIds([...occupied])
+  }, [f.date, f.time, initial.id, reservations])
 
-  const valid = f.date && (f.time || f.custom_time) && f.guests && f.first_name && f.email && f.phone
+  const valid = f.date && (f.time || f.custom_time) && f.guests && f.first_name && f.email && f.phone && f.table_ids && f.table_ids.length > 0
 
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
@@ -353,7 +444,7 @@ function ReservationForm({ initial={}, tables=[], tags=[], groups=[], onSave, on
           Object.entries(STATUS_COLOR).map(([k,v])=>({ value:k, label:v.label }))
         }/>
       </div>
-      <div><Input label="First name *" value={f.first_name} onChange={v=>upd('first_name',v)} /></div>
+      <div><GuestAutocomplete value={f.first_name} onChange={v=>upd('first_name',v)} onSelect={g=>{ setF(p=>({...p, first_name:g.first_name, last_name:g.last_name||p.last_name, email:g.email||p.email, phone:g.phone||p.phone, contact_person:g.contact_person||p.contact_person})) }}/></div>
       <div><Input label="Last name"  value={f.last_name}  onChange={v=>upd('last_name',v)} /></div>
       <div style={{ gridColumn:'1/-1' }}><Input label="Contact person" value={f.contact_person||''} onChange={v=>upd('contact_person',v)} /></div>
       <div style={{ gridColumn:'1/-1' }}><Input label="Email *" type="email" value={f.email} onChange={v=>upd('email',v)} /></div>
@@ -390,25 +481,22 @@ function ReservationForm({ initial={}, tables=[], tags=[], groups=[], onSave, on
 
 // ─── Walk-in Modal ────────────────────────────────────────────────────────────
 
-function WalkInModal({ tables, onSave, onClose, loading }) {
+function WalkInModal({ tables, groups=[], reservations=[], onSave, onClose, loading }) {
   const [guests,   setGuests]   = useState(2)
-  const [tableId,  setTableId]  = useState('')
+  const [tableIds, setTableIds] = useState([])
   const [name,     setName]     = useState('')
 
   const now = new Date()
   const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(Math.floor(now.getMinutes()/15)*15).padStart(2,'0')}:00`
 
-  const activeTables = tables.filter(t=>t.is_active)
-  const tableOptions = [
-    { value:'', label:'Not assigned' },
-    ...activeTables.filter(t=>t.zone==='interior').map(t=>({ value:t.id, label:`${t.name} (interior, ${t.capacity}p)` })),
-    ...activeTables.filter(t=>t.zone==='exterior').map(t=>({ value:t.id, label:`${t.name} (exterior, ${t.capacity}p)` })),
-  ]
+  const occupiedIds = reservations
+    .filter(r=>['seated','confirmed','pending'].includes(r.status))
+    .map(r=>r.table_id).filter(Boolean)
 
   const save = () => onSave({
     date: todayISO(), time: timeStr, guests,
     first_name: name || 'Walk-in', last_name: '', email: 'walkin@underhuset.no', phone: '-',
-    status: 'seated', is_manual: true, table_id: tableId || null,
+    status: 'seated', is_manual: true, table_id: tableIds[0]||null, table_ids: JSON.stringify(tableIds),
     notes: 'Walk-in', seated_at: new Date().toISOString(),
   })
 
@@ -441,7 +529,7 @@ function WalkInModal({ tables, onSave, onClose, loading }) {
             ))}
           </div>
         </div>
-        <Select label="Table" value={tableId} onChange={setTableId} options={tableOptions}/>
+        <TableSelector tables={tables} groups={groups} selectedIds={tableIds} occupiedIds={occupiedIds} onChange={setTableIds}/>
         <div style={{ background:B.orangePale, borderRadius:10, padding:12, fontSize:12, color:B.darkSoft }}>
           ⏰ Arrival time: <strong>{new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</strong> · Status will be set to <strong>Seated</strong>
         </div>
@@ -602,20 +690,29 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
   const exteriorTables = tables.filter(t=>t.zone==='exterior'&&t.is_active).sort((a,b)=>Number(a.name)-Number(b.name))
   const allTables = [...interiorTables, ...exteriorTables]
 
-  const activeRes = todayRes.filter(r=>!['no_show','cancelled','completed'].includes(r.status))
-  const getResForTable = (tableId) => activeRes.filter(r => r.table_id === tableId)
+  const activeRes = todayRes.filter(r=>!['no_show','cancelled'].includes(r.status))
+  const getResForTable = (tableId) => activeRes.filter(r => {
+    if (r.table_id === tableId) return true
+    try {
+      const ids = typeof r.table_ids === 'string' ? JSON.parse(r.table_ids) : (r.table_ids||[])
+      return ids.includes(tableId)
+    } catch { return false }
+  })
 
   const timeToH = t => { const [h,m] = t.split(':').map(Number); return h + m/60 }
   const pct = h => Math.max(0, Math.min(100, (h - TL_S) / TL_R * 100))
 
   const hours = []
   for (let h = Math.ceil(TL_S); h <= TL_E; h++) hours.push(h)
+  const quarters = []
+  for (let h = TL_S; h <= TL_E; h += 0.25) quarters.push(h)
 
   const statusColor = {
     pending:   { bg:'#FEF3C7', border:'#F59E0B', text:'#92400E' },
     confirmed: { bg:'#D1FAE5', border:'#10B981', text:'#065F46' },
     seated:    { bg:'#DBEAFE', border:'#3B82F6', text:'#1E3A8A' },
-    early_free:{ bg:'#EDE9FE', border:'#7C3AED', text:'#4C1D95' },
+    early_free:{ bg:'#F3F4F6', border:'#9CA3AF', text:'#6B7280' },
+    completed:  { bg:'#F3F4F6', border:'#D1D5DB', text:'#9CA3AF' },
   }
 
   const doSwap = async (targetTableId) => {
@@ -626,7 +723,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
     if (conflict) {
       setMergePrompt({ source: dragging, conflict, targetTableId })
     } else {
-      await updateReservation(dragging.id, { table_id: targetTableId })
+      await updateReservation(dragging.id, { table_id: targetTableId, table_ids: JSON.stringify([targetTableId]) })
       onRefresh()
     }
   }
@@ -645,8 +742,8 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
   const doSwapConfirm = async () => {
     if (!mergePrompt) return
     const { source, conflict, targetTableId } = mergePrompt
-    await updateReservation(source.id, { table_id: targetTableId })
-    await updateReservation(conflict.id, { table_id: source.table_id })
+    await updateReservation(source.id, { table_id: targetTableId, table_ids: JSON.stringify([targetTableId]) })
+    await updateReservation(conflict.id, { table_id: source.table_id, table_ids: JSON.stringify([source.table_id]) })
     setMergePrompt(null)
     setDragging(null)
     setDragOverTable(null)
@@ -701,21 +798,30 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
 
     return (
       <div ref={el=>rowRefs.current[table.id]=el}
-        style={{ display:'flex', height:ROW_H, borderBottom:`1px solid ${B.grayLight}`, background: isOver&&dragging ? B.orangePale : '#fff', transition:'background .1s', position:'relative' }}>
+        style={{ display:'flex', height:ROW_H, borderBottom:`1px solid ${B.grayLight}`, background: isOver&&dragging ? B.orangePale : isBlocked ? '#FFF8F0' : '#fff', transition:'background .1s', position:'relative' }}>
         <div style={{ width:LABEL_W, minWidth:LABEL_W, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRight:`1px solid ${B.grayLight}`, background:'#FAFAFA', gap:2, flexShrink:0 }}>
-          <span style={{ fontWeight:700, fontSize:14, color:B.dark }}>#{table.name}</span>
+          <span style={{ fontWeight:700, fontSize:14, color:isBlocked?B.orange:B.dark }}>#{table.name}</span>
           <span style={{ fontSize:10, color:B.gray }}>👥{table.capacity}</span>
-          {isBlocked && <span style={{ fontSize:9, color:'#9CA3AF', background:'#F3F4F6', borderRadius:4, padding:'1px 4px' }}>staff</span>}
+          {isBlocked && <span style={{ fontSize:9, color:B.orange, background:B.orangePale, borderRadius:4, padding:'1px 4px' }}>staff</span>}
         </div>
         <div style={{ flex:1, position:'relative', overflow:'hidden' }}>
-          {hours.map(h=>(
-            <div key={h} style={{ position:'absolute', left:`${pct(h)}%`, top:0, bottom:0, width:1, background:'#F0F0F0' }}/>
-          ))}
+          {quarters.map(h=>{
+            const isHour = Number.isInteger(h)
+            const isHalf = !isHour && (h*2)%1===0
+            return <div key={h} style={{ position:'absolute', left:`${pct(h)}%`, top:0, bottom:0, width:1, background:isHour?'#E0E0E0':isHalf?'#EBEBEB':'#F5F5F5' }}/>
+          })}
           {showNow && <div style={{ position:'absolute', left:`${nowPct}%`, top:0, bottom:0, width:2, background:'rgba(239,68,68,0.5)', zIndex:3 }}/>}
           {resos.map(r=>{
             const h = timeToH(r.time)
             const left = pct(h)
-            const width = Math.min(100-left, BLOCK_H/TL_R*100)
+            let blockH = BLOCK_H
+            if (r.status === 'early_free' && r.freed_at && r.seated_at) {
+              const mins = (new Date(r.freed_at) - new Date(r.seated_at)) / 60000
+              blockH = Math.max(0.25, mins / 60)
+            } else if (r.status === 'completed' && r.seated_at) {
+              blockH = 1.5
+            }
+            const width = Math.min(100-left, blockH/TL_R*100)
             const c = statusColor[r.status] || statusColor.confirmed
             const isDragging = dragging?.id === r.id
             return (
@@ -810,115 +916,222 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
 }
 
 
-function Dashboard({ reservations, tables, tags=[], onEditReservation, onSeated, onEarlyFree, onWalkIn, onRefresh }) {
+
+
+function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation, onSeated, onEarlyFree, onWalkIn, onNewRes, onRefresh }) {
   const today     = todayISO()
-  const todayRes  = reservations.filter(r=>r.date===today&&r.status!=='cancelled')
-  const pending   = todayRes.filter(r=>r.status==='pending').length
-  const confirmed = todayRes.filter(r=>r.status==='confirmed').length
-  const seated    = todayRes.filter(r=>r.status==='seated').length
+  const [selectedDate, setSelectedDate] = useState(todayISO())
+  const todayRes  = reservations.filter(r=>r.date===selectedDate&&r.status!=='cancelled')
+  const noShow    = reservations.filter(r=>r.date===selectedDate&&r.status==='no_show').length
+  const cancelled = reservations.filter(r=>r.date===selectedDate&&r.status==='cancelled').length
   const totalGuests = todayRes.reduce((s,r)=>s+r.guests,0)
-  const activeTables = tables.filter(t=>t.is_active&&!t.is_blocked).length
 
-  // Auto no-show: check every 60s
-  useEffect(() => {
-    const check = async () => {
-      const now = new Date()
-      const nowMin = now.getHours()*60 + now.getMinutes()
-      for (const r of todayRes) {
-        if (r.status!=='pending'&&r.status!=='confirmed') continue
-        const [h,m] = r.time.split(':').map(Number)
-        const resMin = h*60+m
-        if (nowMin - resMin >= 15) {
-          await updateReservation(r.id, { status:'no_show' })
-          await sendEmail('no_show', { reservation: r })
-          // Notify waitlist
-          const next = await getNextWaiting(r.date, r.time)
-          if (next) {
-            await updateWaitlistEntry(next.id, { status:'notified', notified_at: new Date().toISOString() })
-            await sendEmail('waitlist_spot', { entry: next })
-          }
-        }
-      }
-      onRefresh()
-    }
-    const id = setInterval(check, 60_000)
-    return () => clearInterval(id)
-  }, [todayRes])
+  const [view,       setView]       = useState('diagram')
+  const [timeFilter, setTimeFilter] = useState('all')
+  const [calY, setCalY] = useState(new Date().getFullYear())
+  const [calM, setCalM] = useState(new Date().getMonth())
+  const [search, setSearch] = useState('')
+  const [showHidden, setShowHidden] = useState(false)
 
-  const lunch  = todayRes.filter(r=>parseInt(r.time)<16)
-  const dinner = todayRes.filter(r=>parseInt(r.time)>=16)
+  const now = new Date()
+  const weekDays = ['Mo','Tu','We','Th','Fr','Sa','Su']
+  const firstDay = (new Date(calY,calM,1).getDay()+6)%7
+  const daysInMonth = new Date(calY,calM+1,0).getDate()
 
-  const Stat = ({ icon, value, label, color=B.dark }) => (
-    <div style={{ ...S.card, textAlign:'center', padding:'20px 16px' }}>
-      <div style={{ fontSize:28, marginBottom:6 }}>{icon}</div>
-      <div style={{ fontSize:28, fontWeight:700, color, fontFamily:'Playfair Display,serif' }}>{value}</div>
-      <div style={{ fontSize:12, color:B.gray, marginTop:4 }}>{label}</div>
-    </div>
-  )
+  const filteredRes = todayRes.filter(r=>{
+    if(!['pending','confirmed','seated'].includes(r.status)) return false
+    if(search){ const q=search.toLowerCase(); if(!`${r.first_name} ${r.last_name||''}`.toLowerCase().includes(q)) return false }
+    if(timeFilter==='lunch')  { const h=parseInt(r.time); return h>=13&&h<17 }
+    if(timeFilter==='evening'){ const h=parseInt(r.time); return h>=17 }
+    return true
+  }).sort((a,b)=>{
+    const aCompleted = a.status==='completed'
+    const bCompleted = b.status==='completed'
+    if (aCompleted && !bCompleted) return 1
+    if (!aCompleted && bCompleted) return -1
+    if (aCompleted && bCompleted) return new Date(a.seated_at||0) - new Date(b.seated_at||0)
+    return a.time.localeCompare(b.time)
+  })
+
+  const hiddenRes = reservations.filter(r=>r.date===selectedDate&&['no_show','cancelled','completed','early_free'].includes(r.status))
+  const remaining = todayRes.filter(r=>['pending','confirmed'].includes(r.status)).length
+  const remainingGuests = todayRes.filter(r=>['pending','confirmed'].includes(r.status)).reduce((s,r)=>s+r.guests,0)
 
   return (
-    <div>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
-        <h2 style={{ fontFamily:'Playfair Display,serif', fontSize:22, color:B.dark, fontWeight:600 }}>
-          Today — {new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}
-        </h2>
-        <Btn variant="walkin" onClick={onWalkIn}>🚶 Walk-in</Btn>
-      </div>
-
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))', gap:12, marginBottom:28 }}>
-        <Stat icon="📋" value={todayRes.length} label="Today's bookings" />
-        <Stat icon="👥" value={totalGuests}      label="Guests" color={B.orange}/>
-        <Stat icon="⏳" value={pending}          label="Pending" color={B.yellow}/>
-        <Stat icon="✅" value={confirmed}        label="Confirmed" color={B.green}/>
-        <Stat icon="🪑" value={seated}           label="Seated" color={B.blue}/>
-        <Stat icon="🍽️"  value={activeTables}    label="Active tables" />
-      </div>
-
-      <div className="desktop-only"><DiagramView todayRes={todayRes} tables={tables} onEditReservation={onEditReservation} onRefresh={onRefresh}/></div>
-
-      {[['☀️ Lunch', lunch], ['🌙 Dinner', dinner]].map(([label, list]) => list.length > 0 && (
-        <div key={label} style={{ marginBottom:24 }}>
-          <h3 style={{ fontSize:13, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', color:B.gray, marginBottom:12 }}>{label}</h3>
-          <div style={{ ...S.card, padding:0, overflow:'hidden' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead>
-                <tr>{['Time','Name','Guests','Table','Status'].map(h=><th key={h} style={S.th}>{h}</th>)}<th className="hide-mobile" style={S.th}>Source</th><th className="hide-mobile" style={S.th}>Notes</th><th style={S.th}></th></tr>
-              </thead>
-              <tbody>
-                {list.sort((a,b)=>a.time.localeCompare(b.time)).map(r=>(
-                  <tr key={r.id} onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
-                    onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                    <td style={{...S.td, fontWeight:700, fontSize:15}}>{fmtTime(r.time)}</td>
-                    <td style={S.td}>
-                      <div style={{ fontWeight:700, fontSize:15, cursor:'pointer', color:B.dark }} onClick={()=>onEditReservation(r)}>{r.first_name} {r.last_name}</div>
-                      {r.merged_with && <div style={{ fontSize:11, color:'#7C3AED', fontWeight:700 }}>🔗 +{r.merged_with}</div>}
-                      <TagBadges tagIds={r.tag_ids} tags={tags}/>
-                    </td>
-                    <td style={{...S.td, fontSize:15, fontWeight:700}}>👥 {r.guests}</td>
-                    <td style={{...S.td, fontSize:15, fontWeight:700}}><TableCell r={r} tables={tables}/></td>
-                    <td style={S.td}><Badge status={r.status}/></td>
-                    <td className="hide-mobile" style={S.td}><span style={{ fontSize:12, color:B.gray }}>{r.is_manual?'👤 Manual':'🌐 Online'}</span></td>
-                    <td className="hide-mobile" style={{...S.td, maxWidth:150}}>{r.notes?<span title={r.notes} style={{ fontSize:12, color:B.darkSoft, fontStyle:'italic', cursor:'help', display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:140 }}>{r.notes}</span>:<span style={{ color:B.grayLight }}>—</span>}</td>
-                    <td style={{...S.td, whiteSpace:'nowrap'}}><div style={{ display:'flex', gap:4 }}><QuickActions reservation={r} onSeated={onSeated} onEarlyFree={onEarlyFree} onEdit={r=>onEditReservation(r)}/>{!['no_show','cancelled','completed'].includes(r.status)&&<Btn size="sm" variant="danger" onClick={()=>updateReservation(r.id,{status:'no_show'}).then(onRefresh)} style={{ fontSize:10, padding:'4px 8px' }}>NS</Btn>}</div></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <div style={{ display:'flex', gap:0, minHeight:'calc(100vh - 120px)', marginLeft:-20, marginRight:-20 }}>
+      {/* Left Sidebar */}
+      <div style={{ width:280, minWidth:280, borderRight:`1px solid ${B.grayLight}`, background:'#FAFAFA', display:'flex', flexDirection:'column' }}>
+        {/* Mini Calendar */}
+        <div style={{ padding:14, borderBottom:`1px solid ${B.grayLight}` }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+            <button onClick={()=>calM===0?(setCalY(calY-1),setCalM(11)):setCalM(calM-1)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:16, color:B.dark, padding:'2px 6px' }}>‹</button>
+            <span style={{ fontSize:12, fontWeight:700, color:B.dark }}>{MONTHS_EN[calM]} {calY}</span>
+            <button onClick={()=>calM===11?(setCalY(calY+1),setCalM(0)):setCalM(calM+1)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:16, color:B.dark, padding:'2px 6px' }}>›</button>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:1, marginBottom:3 }}>
+            {weekDays.map(d=><div key={d} style={{ textAlign:'center', fontSize:9, fontWeight:700, color:B.gray }}>{d}</div>)}
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:1 }}>
+            {Array(firstDay).fill(null).map((_,i)=><div key={"e"+i}/>)}
+            {Array(daysInMonth).fill(null).map((_,i)=>{
+              const day=i+1
+              const iso=`${calY}-${String(calM+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`
+              const dayRes=reservations.filter(r=>r.date===iso&&!["cancelled","no_show"].includes(r.status))
+              const isToday=iso===todayISO()
+              return (
+                <div key={day} onClick={()=>setSelectedDate(iso)} style={{ textAlign:"center", padding:"2px 1px", borderRadius:5, cursor:'pointer', background:iso===selectedDate?B.orange:isToday?B.orangeLight:"transparent" }}>
+                  <span style={{ fontSize:10, fontWeight:(iso===selectedDate||isToday)?700:400, color:iso===selectedDate?"#fff":B.dark }}>{day}</span>
+                  {dayRes.length>0&&<div style={{ width:3, height:3, borderRadius:"50%", background:iso===selectedDate?"rgba(255,255,255,.7)":B.orange, margin:"0 auto" }}/>}
+                </div>
+              )
+            })}
           </div>
         </div>
-      ))}
 
-      {todayRes.length === 0 && (
-        <div style={{ ...S.card, textAlign:'center', padding:48, color:B.gray }}>
-          <div style={{ fontSize:40, marginBottom:12 }}>📭</div>
-          <p>No reservations today</p>
+        {/* Stats */}
+        <div style={{ padding:12, borderBottom:`1px solid ${B.grayLight}` }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+            <div style={{ background:'#fff', borderRadius:8, padding:'8px 10px', border:`1px solid ${B.grayLight}` }}>
+              <div style={{ fontSize:18, fontWeight:700, color:B.dark }}>{filteredRes.length}</div>
+              <div style={{ fontSize:10, color:B.gray }}>Bookings</div>
+              <div style={{ fontSize:10, color:B.gray }}>Rem: {remaining}</div>
+            </div>
+            <div style={{ background:'#fff', borderRadius:8, padding:'8px 10px', border:`1px solid ${B.grayLight}` }}>
+              <div style={{ fontSize:18, fontWeight:700, color:B.dark }}>{totalGuests}</div>
+              <div style={{ fontSize:10, color:B.gray }}>Guests</div>
+              <div style={{ fontSize:10, color:B.gray }}>Rem: {remainingGuests}</div>
+            </div>
+          </div>
+          {(noShow>0||cancelled>0)&&<div style={{ marginTop:6, fontSize:10, color:B.gray }}>{noShow>0&&<span style={{ marginRight:6 }}>🚫 {noShow} no-show</span>}{cancelled>0&&<span>✕ {cancelled} cancelled</span>}</div>}
         </div>
-      )}
+
+        {/* Search */}
+        <div style={{ padding:'8px 12px', borderBottom:`1px solid ${B.grayLight}` }}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Search guest..."
+            style={{...S.input, fontSize:12, padding:'5px 8px'}}
+            onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
+        </div>
+
+        {/* Reservation list */}
+        <div style={{ flex:1, overflow:'auto' }}>
+          {filteredRes.length===0&&<div style={{ padding:20, textAlign:'center', fontSize:12, color:B.gray }}>No reservations</div>}
+          {filteredRes.map(r=>(
+            <div key={r.id} onClick={()=>onEditReservation(r)}
+              style={{ padding:'8px 12px', borderBottom:`1px solid ${B.grayLight}`, cursor:'pointer', background:'#fff' }}
+              onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
+              onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:2 }}>
+                <span style={{ fontWeight:700, fontSize:13, color:B.dark }}>{fmtTime(r.time)}</span>
+                <Badge status={r.status}/>
+              </div>
+              <div style={{ fontWeight:600, fontSize:14, color:B.dark }}>{r.first_name} {r.last_name||''}</div>
+              <div style={{ display:'flex', gap:8, marginTop:2, fontSize:12, color:B.gray, alignItems:'center' }}>
+                <span>👥 {r.guests}</span>
+                <TableCell r={r} tables={tables} groups={groups}/>
+              </div>
+              {r.merged_with&&<div style={{ fontSize:10, color:'#7C3AED', fontWeight:600 }}>🔗 +{r.merged_with}</div>}
+              <TagBadges tagIds={r.tag_ids} tags={tags}/>
+              <div style={{ display:'flex', gap:4, marginTop:4 }} onClick={e=>e.stopPropagation()}>
+                {(r.status==="pending"||r.status==="confirmed")&&<Btn size="sm" variant="success" onClick={()=>onSeated(r)}>▶ Seat</Btn>}
+                {r.status==="seated"&&<Btn size="sm" onClick={()=>onEarlyFree(r)} style={{ background:"#EDE9FE", color:"#7C3AED", border:"1px solid #7C3AED", fontSize:10, padding:"3px 6px" }}>🚪 Free</Btn>}
+                {!["cancelled","completed","no_show","early_free"].includes(r.status)&&<Btn size="sm" variant="danger" onClick={()=>updateReservation(r.id,{status:"no_show"}).then(onRefresh)} style={{ fontSize:10, padding:"3px 6px" }}>NS</Btn>}
+                {!["cancelled","completed","no_show","early_free"].includes(r.status)&&<Btn size="sm" variant="danger" onClick={()=>updateReservation(r.id,{status:"cancelled"}).then(onRefresh)} style={{ fontSize:10, padding:"3px 6px", background:"#FEE2E2", color:"#EF4444", border:"1px solid #FCA5A5" }}>✕</Btn>}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Hidden reservations toggle */}
+        {hiddenRes.length > 0 && (
+          <div style={{ borderTop:`1px solid ${B.grayLight}` }}>
+            <button onClick={()=>setShowHidden(v=>!v)} style={{ width:'100%', padding:'8px 12px', background:'none', border:'none', cursor:'pointer', fontSize:12, color:B.gray, textAlign:'left' }}>
+              {showHidden?'▾ Hide':'▸ Show'} expired/cancelled bookings ({hiddenRes.length})
+            </button>
+            {showHidden && hiddenRes.map(r=>(
+              <div key={r.id} onClick={()=>onEditReservation(r)}
+                style={{ padding:'8px 12px', borderTop:`1px solid ${B.grayLight}`, cursor:'pointer', background:'#FAFAFA', opacity:0.7 }}
+                onMouseEnter={e=>e.currentTarget.style.opacity='1'}
+                onMouseLeave={e=>e.currentTarget.style.opacity='0.7'}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <span style={{ fontWeight:700, fontSize:13, color:B.gray }}>{fmtTime(r.time)}</span>
+                  <Badge status={r.status}/>
+                </div>
+                <div style={{ fontWeight:600, fontSize:13, color:B.gray }}>{r.first_name} {r.last_name||''}</div>
+                <div style={{ fontSize:11, color:B.gray }}>👥 {r.guests}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Walk-in button */}
+        <div style={{ padding:10, borderTop:`1px solid ${B.grayLight}` }}>
+          <Btn variant="walkin" onClick={onWalkIn} style={{ width:'100%' }}>🚶 Walk-in</Btn>
+        </div>
+      </div>
+
+      {/* Right Main Area */}
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+        {/* Header */}
+        <div style={{ padding:'10px 16px', borderBottom:`1px solid ${B.grayLight}`, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', background:'#fff' }}>
+          <div style={{ fontSize:16, fontWeight:700, color:B.dark, display:'flex', alignItems:'center', gap:10 }}>
+            {new Date(selectedDate+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+            {selectedDate!==today&&<button onClick={()=>{setSelectedDate(today);setCalY(new Date().getFullYear());setCalM(new Date().getMonth())}} style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:6, background:B.orange, color:'#fff', border:'none', cursor:'pointer' }}>Today</button>}
+          </div>
+          <Btn onClick={onNewRes} size="sm">+ New</Btn>
+          <Btn onClick={onWalkIn} variant="walkin" size="sm">🚶 Walk-in</Btn>
+          <div style={{ flex:1 }}/>
+          <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+            {['diagram','list'].map(v=>(
+              <button key={v} onClick={()=>setView(v)} style={{ padding:'5px 12px', borderRadius:8, border:`1px solid ${view===v?B.orange:B.grayLight}`, background:view===v?B.orange:'#fff', color:view===v?'#fff':B.dark, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                {v==='diagram'?'⏱ Diagram':'☰ List'}
+              </button>
+            ))}
+            <div style={{ width:1, height:20, background:B.grayLight, margin:'0 4px' }}/>
+            {[['all','All'],['lunch','🍽️'],['evening','🌙']].map(([f,label])=>(
+              <button key={f} onClick={()=>setTimeFilter(f)} style={{ padding:'4px 8px', borderRadius:6, border:`1px solid ${timeFilter===f?B.orange:B.grayLight}`, background:timeFilter===f?B.orangeLight:'#fff', color:timeFilter===f?B.orange:B.gray, fontSize:13, fontWeight:600, cursor:'pointer' }}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={{ flex:1, overflow:'auto' }}>
+          {view==='diagram'&&<DiagramView todayRes={filteredRes} tables={tables} onEditReservation={onEditReservation} onRefresh={onRefresh}/>}
+          {view==='list'&&(
+            <div style={{ padding:16 }}>
+              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                <thead><tr>{['Time','Name','Guests','Table','Status',''].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {filteredRes.map(r=>(
+                    <tr key={r.id} onClick={()=>onEditReservation(r)} style={{ cursor:'pointer' }}
+                      onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
+                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                      <td style={{...S.td,fontWeight:700,fontSize:15}}>{fmtTime(r.time)}</td>
+                      <td style={S.td}>
+                        <div style={{ fontWeight:700,fontSize:15 }}>{r.first_name} {r.last_name||''}</div>
+                        {r.merged_with&&<div style={{ fontSize:11,color:'#7C3AED',fontWeight:700 }}>🔗 +{r.merged_with}</div>}
+                        <TagBadges tagIds={r.tag_ids} tags={tags}/>
+                      </td>
+                      <td style={{...S.td,fontSize:15,fontWeight:600}}>👥 {r.guests}</td>
+                      <td style={{...S.td,fontSize:15,fontWeight:600}}><TableCell r={r} tables={tables} groups={groups}/></td>
+                      <td style={S.td}><Badge status={r.status}/></td>
+                      <td style={{...S.td,whiteSpace:'nowrap'}} onClick={e=>e.stopPropagation()}>
+                        <div style={{ display:'flex', gap:4 }}>
+                          <QuickActions reservation={r} onSeated={onSeated} onEarlyFree={onEarlyFree} onEdit={onEditReservation} onCancel={r=>updateReservation(r.id,{status:'cancelled'}).then(onRefresh)}/>
+                          {!['no_show','cancelled','completed'].includes(r.status)&&<Btn size="sm" variant="danger" onClick={()=>updateReservation(r.id,{status:'no_show'}).then(onRefresh)} style={{ fontSize:10,padding:'4px 8px' }}>NS</Btn>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
-
-// ─── Tab: Reservations ────────────────────────────────────────────────────────
 
 function ExpandableNote({ note }) {
   const [expanded, setExpanded] = useState(false)
@@ -933,9 +1146,9 @@ function ExpandableNote({ note }) {
   )
 }
 
-function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDelete, onSeated, onEarlyFree }) {
+function ReservationsList({ reservations, tables, tags=[], groups=[], onNew, onEdit, onDelete, onSeated, onEarlyFree }) {
   const [dateFilter,   setDateFilter]   = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('confirmed')
   const [search,       setSearch]       = useState('')
   const [view,         setView]         = useState('list')
   const today = new Date()
@@ -943,9 +1156,12 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
   const [calM, setCalM] = useState(today.getMonth())
   const [rangeStart,   setRangeStart]   = useState(null)
   const [rangeEnd,     setRangeEnd]     = useState(null)
+  const [selected,     setSelected]     = useState(new Set())
 
   const filtered = reservations.filter(r => {
-    if (dateFilter   && r.date!==dateFilter) return false
+    if (rangeStart && rangeEnd) {
+      if (r.date < rangeStart || r.date > rangeEnd) return false
+    } else if (dateFilter && r.date!==dateFilter) return false
     if (statusFilter && r.status!==statusFilter) return false
     if (search) {
       const q = search.toLowerCase()
@@ -954,12 +1170,19 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
     return true
   })
 
+  const monthStr = `${calY}-${String(calM+1).padStart(2,'0')}`
+  const monthFiltered = reservations.filter(r=>{
+    if (rangeStart && rangeEnd) return r.date >= rangeStart && r.date <= rangeEnd
+    return r.date.startsWith(monthStr)
+  })
+  const exportData = view==='month' ? monthFiltered : filtered
+
   const tName = (r) => tables.find(t=>t.id===r.table_id)?.name || (r.table_ids?.length ? r.table_ids.map(id=>tables.find(t=>t.id===id)?.name||'').filter(Boolean).join('+') : '—')
 
   const exportExcel = () => {
     const rows = [
       ['Date','Time','First Name','Last Name','Guests','Table','Status','Email','Phone','Notes','Source'],
-      ...filtered.map(r=>[
+      ...exportData.map(r=>[
         r.date, r.time, r.first_name, r.last_name||'', r.guests,
         tName(r), r.status, r.email||'', r.phone||'', r.notes||'',
         r.is_manual?'Manual':'Online'
@@ -969,7 +1192,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
     const blob = new Blob(['\ufeff'+csv], { type:'text/csv;charset=utf-8' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `reservations-${dateFilter||'all'}.csv`
+    a.download = `reservations-${rangeStart&&rangeEnd?rangeStart+'_'+rangeEnd:dateFilter||'all'}.csv`
     a.click()
   }
 
@@ -1015,6 +1238,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
           <Btn size="sm" variant={view==='list'?'primary':'secondary'} onClick={()=>setView('list')}>☰ List</Btn>
           <Btn size="sm" variant={view==='month'?'primary':'secondary'} onClick={()=>setView('month')}>📅 Month</Btn>
           <Btn size="sm" variant="secondary" onClick={exportExcel}>📊 Excel</Btn>
+          {selected.size>0 && <Btn size="sm" variant="primary" onClick={()=>{ const sel=filtered.filter(r=>selected.has(r.id)); const rows=[['Date','Time','First Name','Last Name','Guests','Table','Status','Email','Phone','Notes','Source'],...sel.map(r=>[r.date,r.time,r.first_name,r.last_name||'',r.guests,tName(r),r.status,r.email||'',r.phone||'',r.notes||'',r.is_manual?'Manual':'Online'])]; const csv=rows.map(row=>row.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n'); const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`selected-${sel.length}-reservations.csv`; a.click() }}>📊 Export {selected.size} selected</Btn>}
           <Btn size="sm" variant="secondary" onClick={exportPDF}>📄 PDF</Btn>
           <Btn onClick={onNew}>+ New manual reservation</Btn>
         </div>
@@ -1095,7 +1319,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
                     <TagBadges tagIds={r.tag_ids} tags={tags}/>
                   </td>
                   <td style={{...S.td,fontSize:15,fontWeight:700}}>👥 {r.guests}</td>
-                  <td style={{...S.td,fontSize:15,fontWeight:700}}><TableCell r={r} tables={tables}/></td>
+                  <td style={{...S.td,fontSize:15,fontWeight:700}}><TableCell r={r} tables={tables} groups={groups}/></td>
                   <td style={S.td}><Badge status={r.status}/></td>
                   <td className="hide-mobile" style={S.td}><span style={{ fontSize:12, color:B.gray }}>{r.is_manual?'👤 Manual':'🌐 Online'}</span></td>
                   <td className="hide-mobile" style={{...S.td,maxWidth:150}}>{r.notes?<span title={r.notes} style={{ fontSize:12,color:B.darkSoft,fontStyle:'italic',cursor:'help',display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:140 }}>{r.notes}</span>:<span style={{ color:B.grayLight }}>—</span>}</td>
@@ -1133,13 +1357,14 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
       {view!=='month' && <div style={{ ...S.card, padding:0, overflow:'auto' }}>
         <table className="res-table" style={{ width:'100%', borderCollapse:'collapse', minWidth:800 }}>
           <thead>
-            <tr><th className="hide-mobile" style={S.th}>Code</th>{['Date','Time','Name','Guests','Table','Status'].map(h=><th key={h} style={S.th}>{h}</th>)}<th className="hide-mobile" style={S.th}>Source</th><th className="hide-mobile" style={S.th}>Notes</th><th style={S.th}></th></tr>
+            <tr><th style={S.th}><input type="checkbox" checked={selected.size===filtered.filter(r=>view!=='month').length&&filtered.length>0} onChange={e=>{ if(e.target.checked) setSelected(new Set(filtered.map(r=>r.id))); else setSelected(new Set()) }}/></th><th className="hide-mobile" style={S.th}>Code</th>{['Date','Time','Name','Guests','Table','Status'].map(h=><th key={h} style={S.th}>{h}</th>)}<th className="hide-mobile" style={S.th}>Source</th><th className="hide-mobile" style={S.th}>Notes</th><th style={S.th}></th></tr>
           </thead>
           <tbody>
             {filtered.length===0&&<tr><td colSpan={9} style={{...S.td,textAlign:'center',color:B.gray,padding:40}}>No results</td></tr>}
             {view!=='month' && filtered.map(r=>(
               <tr key={r.id} onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                <td style={S.td}><input type="checkbox" checked={selected.has(r.id)} onChange={e=>{ const s=new Set(selected); e.target.checked?s.add(r.id):s.delete(r.id); setSelected(s) }}/></td>
                 <td className="hide-mobile" style={{...S.td,fontWeight:700,fontSize:12,color:B.gray}}>{r.reservation_code||'—'}</td>
                 <td style={{...S.td,fontWeight:600,fontSize:15}}>{fmtDate(r.date)}</td>
                 <td style={{...S.td,fontWeight:700,fontSize:15}}>{fmtTime(r.time)}</td>
@@ -1150,7 +1375,7 @@ function ReservationsList({ reservations, tables, tags=[], onNew, onEdit, onDele
                   <TagBadges tagIds={r.tag_ids} tags={tags}/>
                 </td>
                 <td style={{...S.td,fontSize:15,fontWeight:700}}>👥 {r.guests}</td>
-                <td style={{...S.td,fontSize:15,fontWeight:700}}><TableCell r={r} tables={tables}/></td>
+                <td style={{...S.td,fontSize:15,fontWeight:700}}><TableCell r={r} tables={tables} groups={groups}/></td>
                 <td style={S.td}><Badge status={r.status}/></td>
                 <td className="hide-mobile" style={S.td}><span style={{ fontSize:11, color:B.gray }}>{r.is_manual?'👤 Manual':'🌐 Online'}</span></td>
                 <td className="hide-mobile" style={{...S.td, maxWidth:180}}>
@@ -1368,32 +1593,41 @@ function TablesManager({ tables, groups, onRefresh }) {
         </div>
 
         {(groups||[]).length > 0 && (
-          <div style={{ ...S.card, padding:0, overflow:'auto' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead><tr>{['Group','Tables','Capacity','Status','Actions'].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
-              <tbody>
-                {(groups||[]).map(g=>(
-                  <tr key={g.id} onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
-                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                    <td style={{...S.td,fontWeight:600}}>{g.name}</td>
-                    <td style={S.td}>
-                      <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
-                        {(g.table_ids||[]).map(id=>{ const t=tables.find(t=>t.id===id); return t?<span key={id} style={{ background:B.blueLight,color:B.blue,padding:'2px 8px',borderRadius:6,fontSize:11,fontWeight:600 }}>{t.name}</span>:null })}
-                      </div>
-                    </td>
-                    <td style={S.td}>{g.capacity}p</td>
-                    <td style={S.td}>{g.is_active?<span style={{ background:B.greenLight,color:B.green,padding:'2px 8px',borderRadius:6,fontSize:11,fontWeight:700 }}>Active</span>:<span style={{ background:B.grayLight,color:B.gray,padding:'2px 8px',borderRadius:6,fontSize:11,fontWeight:700 }}>Inactive</span>}</td>
-                    <td style={{...S.td,whiteSpace:'nowrap'}}>
-                      <div style={{ display:'flex', gap:6 }}>
-                        <Btn size="sm" variant="secondary" onClick={()=>{ setGEditing(g); setGName(g.name); setGTables([...(g.table_ids||[])]) }}>Edit</Btn>
-                        <Btn size="sm" variant="ghost" onClick={async()=>{ await updateTableGroup(g.id,{is_active:!g.is_active}); onRefresh() }}>{g.is_active?'Deactivate':'Activate'}</Btn>
-                        <Btn size="sm" variant="danger" onClick={()=>setGConfirm(g)}>×</Btn>
-                      </div>
-                    </td>
-                  </tr>
+          <div style={{ ...S.card, display:'grid', gap:8 }}>
+            <div style={{ fontSize:12, color:B.gray, marginBottom:4 }}>⠿ Drag to reorder</div>
+            {[...(groups||[])].sort((a,b)=>(a.position||0)-(b.position||0)).map((g,i,arr)=>(
+              <div key={g.id} draggable
+                onDragStart={e=>e.dataTransfer.setData('gid',g.id)}
+                onDragOver={e=>e.preventDefault()}
+                onDrop={async e=>{
+                  const fromId=e.dataTransfer.getData('gid')
+                  if(fromId===g.id) return
+                  const sorted=[...arr].sort((a,b)=>(a.position||0)-(b.position||0))
+                  const fromIdx=sorted.findIndex(x=>x.id===fromId)
+                  const toIdx=sorted.findIndex(x=>x.id===g.id)
+                  const reordered=[...sorted]
+                  const [moved]=reordered.splice(fromIdx,1)
+                  reordered.splice(toIdx,0,moved)
+                  await Promise.all(reordered.map((x,idx)=>updateTableGroup(x.id,{position:idx})))
+                  onRefresh()
+                }}
+                style={{ display:'flex', alignItems:'center', gap:12, background:'#FAFAFA', borderRadius:10, padding:'10px 14px', border:`1px solid ${B.grayLight}`, cursor:'grab' }}>
+                <span style={{ color:B.gray, fontSize:18 }}>⠿</span>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:700, fontSize:14, color:B.dark }}>{g.name}</div>
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginTop:4 }}>
+                    {(g.table_ids||[]).map(id=>{ const t=tables.find(t=>t.id===id); return t?<span key={id} style={{ background:B.blueLight,color:B.blue,padding:'1px 6px',borderRadius:5,fontSize:11,fontWeight:600 }}>{t.name}</span>:null })}
+                  </div>
+                </div>
+                <span style={{ fontSize:12, color:B.gray }}>{g.capacity}p</span>
+                {g.is_active?<span style={{ background:B.greenLight,color:B.green,padding:'2px 8px',borderRadius:6,fontSize:11,fontWeight:700 }}>Active</span>:<span style={{ background:'#F3F4F6',color:B.gray,padding:'2px 8px',borderRadius:6,fontSize:11,fontWeight:700 }}>Inactive</span>}
+                <div style={{ display:'flex', gap:6 }}>
+                  <Btn size="sm" variant="secondary" onClick={()=>{ setGEditing(g); setGName(g.name); setGTables([...(g.table_ids||[])]) }}>Edit</Btn>
+                  <Btn size="sm" variant="ghost" onClick={async()=>{ await updateTableGroup(g.id,{is_active:!g.is_active}); onRefresh() }}>{g.is_active?'Deactivate':'Activate'}</Btn>
+                  <Btn size="sm" variant="danger" onClick={()=>setGConfirm(g)}>×</Btn>
+                </div>
+              </div>
                 ))}
-              </tbody>
-            </table>
           </div>
         )}
       </div>
@@ -1427,6 +1661,14 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
     } finally { setStaffSaving(false) }
   }
 
+  // Auto-apply staff to new reservations without staff
+  useEffect(() => {
+    if (!staffDay || !dateFilter) return
+    const newResos = breakfast.filter(r => r.date === dateFilter && r.status !== 'cancelled' && !r.staff_names)
+    if (newResos.length === 0) return
+    Promise.all(newResos.map(r => updateBreakfastReservation(r.id, { staff_names: staffDay }))).then(onRefresh)
+  }, [breakfast, staffDay, dateFilter])
+
   let hotels = []
   try { hotels = JSON.parse(settings.hotels||'[]') } catch {}
 
@@ -1454,15 +1696,62 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
   }
 
   const exportCSV = () => {
+    const allStatuses = filtered
+    const completed = allStatuses.filter(r=>r.status==='seated'||r.status==='completed')
+    const noshow    = allStatuses.filter(r=>r.status==='no_show')
+    const cancelled = allStatuses.filter(r=>r.status==='cancelled')
+
     const rows = [
-      ['Date','Hotel','Guests','Contact','Email','Phone','Notes','Staff','Status'],
-      ...filtered.map(r=>[r.date, r.hotel, r.guests, r.contact_name, r.contact_email||'', r.contact_phone||'', r.notes||'', r.staff_names||'', r.status])
+      ['Date','Hotel','Contact','Email','Phone','Notes','Staff','Completed Guests','No-show Guests','Cancelled Guests','Status','Billable'],
+      ...allStatuses.map(r=>[
+        r.date, r.hotel, r.contact_name, r.contact_email||'', r.contact_phone||'', r.notes||'', r.staff_names||'',
+        (r.status==='seated'||r.status==='completed') ? r.guests : '',
+        r.status==='no_show' ? r.guests : '',
+        r.status==='cancelled' ? r.guests : '',
+        r.status,
+        (r.status==='seated'||r.status==='completed'||r.status==='no_show') ? 'YES' : 'NO'
+      ])
     ]
-    const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type:'text/csv' })
+    // Summary rows
+    rows.push([])
+    rows.push(['SUMMARY','','','','','','',
+      completed.reduce((s,r)=>s+r.guests,0),
+      noshow.reduce((s,r)=>s+r.guests,0),
+      cancelled.reduce((s,r)=>s+r.guests,0),
+      '',''])
+    rows.push(['','','','','','','Billable guests:',
+      completed.reduce((s,r)=>s+r.guests,0)+noshow.reduce((s,r)=>s+r.guests,0),
+      '','','',''])
+
+    const csv = rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n')
+    const blob = new Blob(['\ufeff'+csv], { type:'text/csv;charset=utf-8' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `breakfast-${dateFilter||'all'}-${hotelFilter||'all'}.csv`
+    a.download = `breakfast-${hotelFilter||'all'}-${dateFilter||'all'}.csv`
+    a.click()
+  }
+
+  const exportInvoice = () => {
+    const rows = [
+      ['Date','Hotel','Contact','Email','Phone','PAX (billable)','Cancelled','Notes','Staff'],
+      ...filtered.map(r=>[
+        r.date, r.hotel, r.contact_name, r.contact_email||'', r.contact_phone||'',
+        (r.status==='seated'||r.status==='completed'||r.status==='no_show') ? r.guests : '',
+        r.status==='cancelled' ? r.guests : '',
+        r.notes||'', r.staff_names||''
+      ])
+    ]
+    const completed = filtered.filter(r=>r.status==='seated'||r.status==='completed')
+    const noshow    = filtered.filter(r=>r.status==='no_show')
+    const cancelled = filtered.filter(r=>r.status==='cancelled')
+    const totalPax  = completed.reduce((s,r)=>s+r.guests,0) + noshow.reduce((s,r)=>s+r.guests,0)
+    rows.push([])
+    rows.push(['TOTAL','','','','',totalPax, cancelled.reduce((s,r)=>s+r.guests,0),'',''])
+    const csv = rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n')
+    const blob = new Blob(['\ufeff'+csv], { type:'text/csv;charset=utf-8' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `invoice-${hotelFilter||'all'}-${dateFilter||'all'}.csv`
     a.click()
   }
 
@@ -1541,30 +1830,11 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
         <div style={{ display:'flex', gap:8 }}>
           <Btn size="sm" variant="secondary" onClick={()=>setDateFilter(todayISO())} style={{background: dateFilter===todayISO()?'#F99D54':'', color: dateFilter===todayISO()?'#fff':''}}>📅 Today</Btn>
           <Btn size="sm" variant="secondary" onClick={exportCSV}>⬇ Export CSV</Btn>
+          <Btn size="sm" variant="secondary" onClick={exportInvoice}>📄 Invoice</Btn>
           <Btn size="sm" onClick={()=>setNewModal(true)}>+ New reservation</Btn>
         </div>
       </div>
 
-      {/* Hotel links */}
-      <div style={{ ...S.card, marginBottom:20, background:B.blueLight }}>
-        <div style={{ fontSize:12, fontWeight:700, color:B.blue, marginBottom:10, letterSpacing:'.05em', textTransform:'uppercase' }}>🔗 Hotel booking links</div>
-        <div style={{ display:'grid', gap:8 }}>
-          {[
-            { label:'Ingrid',    path:'/ingrid' },
-            { label:'Marta',     path:'/marta'  },
-            { label:'Sakrisøy',  path:'/sakrisoy' },
-            { label:'General',   path:'/page' },
-          ].map(({ label, path })=>(
-            <div key={path} style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-              <span style={{ fontSize:12, color:B.blue, fontWeight:600, minWidth:100 }}>{label}</span>
-              <code style={{ fontSize:12, color:B.dark, background:'#fff', padding:'4px 10px', borderRadius:6, flex:1, minWidth:160 }}>
-                {window.location.origin}{path}
-              </code>
-              <Btn size="sm" onClick={()=>navigator.clipboard.writeText(window.location.origin+path)}>Copy</Btn>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* Stats by hotel */}
       {Object.keys(byHotel).length > 0 && (
@@ -1634,9 +1904,22 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
                   {r.notes?<span title={r.notes} style={{ fontSize:12,color:B.darkSoft,fontStyle:'italic',cursor:'help',display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:140 }}>{r.notes}</span>:<span style={{ color:B.grayLight }}>—</span>}
                 </td>
                 <td style={S.td}>
-                  <span onClick={async()=>{ const next=r.status==='confirmed'?'seated':r.status==='seated'?'cancelled':'confirmed'; await updateBreakfastReservation(r.id,{status:next}); onRefresh() }} style={{ background:r.status==='cancelled'?B.redLight:r.status==='seated'?'#e8f5e9':'#fff3e0', color:r.status==='cancelled'?B.red:r.status==='seated'?'#2e7d32':'#e65100', padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, cursor:'pointer', userSelect:'none', title:'Click to change status' }}>
-                    {r.status==='cancelled'?'❌ Cancelled':r.status==='seated'?'✅ Seated':'🟡 Confirmed'}
-                  </span>
+                  <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+                    {r.status!=='cancelled'&&r.status!=='no_show'&&(
+                      <span onClick={async()=>{ const next=r.status==='confirmed'?'seated':'confirmed'; await updateBreakfastReservation(r.id,{status:next}); onRefresh() }}
+                        style={{ background:r.status==='seated'?'#DBEAFE':'#D1FAE5', color:r.status==='seated'?'#1E3A8A':'#065F46', padding:'3px 12px', borderRadius:20, fontSize:11, fontWeight:700, cursor:'pointer', userSelect:'none' }}>
+                        {r.status==='seated'?'✅ Seated':'✅ Confirmed'}
+                      </span>
+                    )}
+                    {r.status==='cancelled'&&<span style={{ background:B.redLight, color:B.red, padding:'3px 12px', borderRadius:20, fontSize:11, fontWeight:700 }}>❌ Cancelled</span>}
+                    {r.status==='no_show'&&<span style={{ background:'#F3F4F6', color:'#6B7280', padding:'3px 12px', borderRadius:20, fontSize:11, fontWeight:700 }}>🚫 No-show</span>}
+                    {r.status!=='cancelled'&&r.status!=='no_show'&&(
+                      <span onClick={async()=>{ await updateBreakfastReservation(r.id,{status:'no_show'}); onRefresh() }}
+                        style={{ background:'#FEE2E2', color:'#EF4444', padding:'3px 8px', borderRadius:20, fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                        No show
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td style={{...S.td,whiteSpace:'nowrap'}}>
                   <div style={{ display:'flex', gap:6 }}>
@@ -1664,13 +1947,14 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
 
 
 const CAT_COLORS = {
+  Alert:   '#EF4444',
   Admin:   '#F59E0B',
   Occasion:'#3B82F6',
   Group:   '#10B981',
   Party:   '#7C3AED',
 }
-const CATEGORIES = ['Admin', 'Occasion', 'Group', 'Party']
-const CAT_EMOJI = { Admin:'📋', Occasion:'🎉', Group:'👥', Party:'🎈' }
+const CATEGORIES = ['Alert', 'Admin', 'Occasion', 'Group', 'Party']
+const CAT_EMOJI = { Alert:'🚨', Admin:'📋', Occasion:'🎉', Group:'👥', Party:'🎈' }
 
 function TagManager({ tags, onTagsChange }) {
   const [newName, setNewName] = useState('')
@@ -2066,6 +2350,29 @@ function SettingsTab({ settings, onSave, tags=[], onTagsChange }) {
           <TagManager tags={tags} onTagsChange={onTagsChange}/>
         </div>
 
+      {/* Booking links */}
+      <div style={{ ...S.card, marginBottom:20 }}>
+        <h3 style={{ fontSize:15, fontWeight:700, color:B.dark, marginBottom:16 }}>🔗 Booking page links</h3>
+        <div style={{ display:'grid', gap:8 }}>
+          {[
+            { label:'Ingrid',    path:'/ingrid' },
+            { label:'Marta',     path:'/marta'  },
+            { label:'Sakrisøy',  path:'/sakrisoy' },
+            { label:'General',   path:'/page' },
+            { label:'Breakfast', path:'/breakfast' },
+          ].map(({ label, path })=>(
+            <div key={path} style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <span style={{ fontSize:13, fontWeight:600, color:B.dark, minWidth:100 }}>{label}</span>
+              <code style={{ fontSize:12, color:B.dark, background:'#F3F4F6', padding:'4px 10px', borderRadius:6, flex:1, minWidth:160 }}>
+                {window.location.origin}{path}
+              </code>
+              <Btn size="sm" onClick={()=>navigator.clipboard.writeText(window.location.origin+path)}>Copy</Btn>
+              <Btn size="sm" variant="secondary" onClick={()=>window.open(window.location.origin+path,'_blank')}>↗ Open</Btn>
+            </div>
+          ))}
+        </div>
+      </div>
+
         <div><Btn onClick={save}>{saved?'✓ Saved':'Save changes'}</Btn></div>
       </div>
     </div>
@@ -2144,7 +2451,8 @@ function LoginPage({ onLogin }) {
 }
 
 function AdminContent({ role }) {
-  const [tab,          setTab]          = useState('dashboard')
+  const [tab,          setTab]          = useState(()=>{ try { return localStorage.getItem('uh_tab')||'dashboard' } catch { return 'dashboard' } })
+  const setTabAndSave = t => { setTab(t); try { localStorage.setItem('uh_tab', t) } catch {} }
   const [reservations, setReservations] = useState([])
   const [tables,       setTables]       = useState([])
   const [waitlist,     setWaitlist]     = useState([])
@@ -2152,12 +2460,15 @@ function AdminContent({ role }) {
   const [settings,     setSettings]     = useState({})
   const [loading,      setLoading]      = useState(true)
   const [newModal,     setNewModal]     = useState(false)
+  const [todayNewModal, setTodayNewModal] = useState(false)
   const [editModal,    setEditModal]    = useState(null)
   const [deleteModal,  setDeleteModal]  = useState(null)
   const [walkInModal,  setWalkInModal]  = useState(false)
   const [saving,       setSaving]       = useState(false)
   const [deleted,      setDeleted]      = useState([])
   const [showDeleted,  setShowDeleted]  = useState(false)
+  const [cancelled,    setCancelled]    = useState([])
+  const [showCancelled,setShowCancelled] = useState(false)
   const [tags,         setTags]         = useState([])
   const [mobileMenu,   setMobileMenu]   = useState(false)
   const [groups,       setGroups]       = useState([])
@@ -2171,6 +2482,7 @@ function AdminContent({ role }) {
       ])
       setReservations(res||[]); setTables(tbl||[]); setWaitlist(wl||[])
       const del = await getDeletedReservations(); setDeleted(del||[])
+      const can = await getCancelledReservations(); setCancelled(can||[])
       const tgs = await getTags(); setTags(tgs||[])
       const grps = await getTableGroups(); setGroups(grps||[])
       setBreakfast(bfst||[]); setSettings(set||{})
@@ -2184,19 +2496,23 @@ function AdminContent({ role }) {
     return()=>clearInterval(id)
   },[loadAll, tab])
 
+  const reservationsRef = useRef(reservations)
+  useEffect(()=>{ reservationsRef.current = reservations },[reservations])
+
   useEffect(()=>{
     const autoComplete = async () => {
       const now = new Date()
-      const seated = reservations.filter(r => r.status === 'seated' && r.seated_at)
+      const seated = reservationsRef.current.filter(r => r.status === 'seated' && r.seated_at)
+      let updated = false
       for (const r of seated) {
         const mins = (now - new Date(r.seated_at)) / 60000
-        if (mins >= 90) await updateReservation(r.id, { status: 'completed' })
+        if (mins >= 90) { await updateReservation(r.id, { status: 'completed' }); updated = true }
       }
-      if (seated.length > 0) loadAll()
+      if (updated) loadAll(true)
     }
     const id = setInterval(autoComplete, 5 * 60 * 1000)
     return () => clearInterval(id)
-  },[reservations, loadAll])
+  },[loadAll])
 
   useEffect(()=>{
     const autoCompleteBreakfast = async () => {
@@ -2218,11 +2534,11 @@ function AdminContent({ role }) {
       const r = await createReservation({ date:f.date, time:f.custom_time||f.time, guests:parseInt(f.guests),
         first_name:f.first_name, last_name:f.last_name, email:f.email, phone:f.phone,
         notes:f.notes, contact_person:f.contact_person||null, custom_time:f.custom_time||null, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status, time: f.custom_time ? f.custom_time : f.time,
-        table_id: f.table_ids?.length===1 ? f.table_ids[0] : null,
-        table_ids: f.table_ids||[],
+        table_id: f.table_ids?.length>0 ? f.table_ids[0] : null,
+        table_ids: JSON.stringify(f.table_ids||[]),
         is_manual:true })
       if (settings.email_confirmation==='true') await sendEmail('confirmation', { reservation:r })
-      setNewModal(false); loadAll()
+      setNewModal(false); setTodayNewModal(false); loadAll()
     } finally { setSaving(false) }
   }
 
@@ -2231,7 +2547,9 @@ function AdminContent({ role }) {
     try {
       await updateReservation(editModal.id, { date:f.date, time:f.custom_time||f.time, guests:parseInt(f.guests),
         first_name:f.first_name, last_name:f.last_name, email:f.email, phone:f.phone,
-        notes:f.notes, contact_person:f.contact_person||null, custom_time:f.custom_time||null, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status, time: f.custom_time ? f.custom_time : f.time,
+        notes:f.notes, contact_person:f.contact_person||null, custom_time:f.custom_time||null, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status,
+        table_id: f.table_ids?.length>0 ? f.table_ids[0] : null,
+        table_ids: JSON.stringify(f.table_ids||[]),
         table_id: f.table_ids?.length===1 ? f.table_ids[0] : null,
         table_ids: f.table_ids||[] })
       if (f.status==='cancelled' && editModal.status!=='cancelled') {
@@ -2286,7 +2604,7 @@ function AdminContent({ role }) {
         {/* Desktop tabs */}
         <div className="desktop-tabs" style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
           {TABS.filter(t => t.id !== 'settings' || role === 'admin').map(t=>(
-            <button key={t.id} onClick={()=>setTab(t.id)} style={{
+            <button key={t.id} onClick={()=>setTabAndSave(t.id)} style={{
               background:tab===t.id?B.orange:'transparent', border:'none', borderRadius:8, cursor:'pointer',
               padding:'6px 12px', color:tab===t.id?'#fff':'rgba(255,255,255,.6)',
               fontSize:13, fontWeight:tab===t.id?700:400, display:'flex', alignItems:'center', gap:5,
@@ -2303,7 +2621,7 @@ function AdminContent({ role }) {
           {mobileMenu && (
             <div style={{ position:'absolute', top:'110%', right:0, background:'#3C4242', borderRadius:12, boxShadow:'0 8px 30px rgba(0,0,0,.3)', zIndex:9999, minWidth:200, padding:8 }}>
               {TABS.filter(t => t.id !== 'stats' && (t.id !== 'settings' || role === 'admin')).map(t=>(
-                <button key={t.id} onClick={()=>{ setTab(t.id); setMobileMenu(false) }} style={{
+                <button key={t.id} onClick={()=>{ setTabAndSave(t.id); setMobileMenu(false) }} style={{
                   display:'flex', alignItems:'center', gap:10, width:'100%', background:tab===t.id?B.orange:'transparent',
                   border:'none', borderRadius:8, cursor:'pointer', padding:'12px 16px',
                   color:tab===t.id?'#fff':'rgba(255,255,255,.8)', fontSize:15, fontWeight:tab===t.id?700:400,
@@ -2331,14 +2649,46 @@ function AdminContent({ role }) {
       <div style={{ maxWidth:'95%', margin:'0 auto', padding:'28px 24px' }}>
         {loading ? <div style={{ textAlign:'center', padding:80, color:B.gray }}>Loading…</div> : (
           <>
-            {tab==='dashboard'    && <Dashboard reservations={reservations} tables={tables} tags={tags}
+            {tab==='dashboard'    && <Dashboard reservations={reservations} tables={tables} tags={tags} groups={groups}
               onEditReservation={r=>setEditModal(r)}
               onSeated={handleSeated} onEarlyFree={handleEarlyFree}
-              onWalkIn={()=>setWalkInModal(true)} onRefresh={loadAll}/>}
+              onWalkIn={()=>setWalkInModal(true)} onNewRes={()=>setTodayNewModal(true)} onRefresh={loadAll}/>}
             {tab==='reservations' && <>
-              <ReservationsList reservations={reservations} tables={tables} tags={tags}
+              <ReservationsList reservations={reservations} tables={tables} tags={tags} groups={groups}
                 onNew={()=>setNewModal(true)} onEdit={r=>setEditModal(r)} onDelete={r=>setDeleteModal(r)}
                 onSeated={handleSeated} onEarlyFree={handleEarlyFree}/>
+              {cancelled.length > 0 && (
+                <div style={{ marginTop:16 }}>
+                  <button onClick={()=>setShowCancelled(v=>!v)} style={{ background:'none', border:'1px solid #E2E6E6', borderRadius:8, padding:'8px 16px', fontSize:13, cursor:'pointer', color:'#8A8F8F' }}>
+                    ✕ {showCancelled ? 'Hide' : 'Show'} cancelled reservations ({cancelled.length})
+                  </button>
+                  {showCancelled && (
+                    <div style={{ marginTop:12, border:'1px solid #E2E6E6', borderRadius:12, overflow:'auto' }}>
+                      <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                        <thead><tr style={{ background:'#FAF6F0' }}>
+                          {['Code','Date','Time','Name','Guests','Email','Table',''].map(h=><th key={h} style={{ padding:'10px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#8A8F8F', textTransform:'uppercase' }}>{h}</th>)}
+                        </tr></thead>
+                        <tbody>
+                          {cancelled.map(r=>(
+                            <tr key={r.id} style={{ borderTop:'1px solid #E2E6E6' }}>
+                              <td style={{ padding:'10px 12px', fontWeight:700, fontSize:12, color:'#8A8F8F' }}>{r.reservation_code||'—'}</td>
+                              <td style={{ padding:'10px 12px' }}>{r.date}</td>
+                              <td style={{ padding:'10px 12px' }}>{r.time?.slice(0,5)}</td>
+                              <td style={{ padding:'10px 12px', fontWeight:600 }}>{r.first_name} {r.last_name||''}</td>
+                              <td style={{ padding:'10px 12px' }}>{r.guests}</td>
+                              <td style={{ padding:'10px 12px', color:'#8A8F8F', fontSize:12 }}>{r.email}</td>
+                              <td style={{ padding:'10px 12px' }}><TableCell r={r} tables={tables} groups={groups}/></td>
+                              <td style={{ padding:'10px 12px' }}>
+                                <button onClick={async()=>{ await updateReservation(r.id,{status:'confirmed'}); loadAll() }} style={{ background:'#D1FAE5', border:'none', borderRadius:6, padding:'4px 10px', fontSize:12, fontWeight:700, color:'#065F46', cursor:'pointer' }}>↩ Restore</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
               {deleted.length > 0 && (
                 <div style={{ marginTop:24 }}>
                   <button onClick={()=>setShowDeleted(v=>!v)} style={{ background:'none', border:'1px solid #E2E6E6', borderRadius:8, padding:'8px 16px', fontSize:13, cursor:'pointer', color:'#8A8F8F' }}>
@@ -2373,7 +2723,7 @@ function AdminContent({ role }) {
               )}
             </>}
             {tab==='waitlist'  && <WaitlistTab waitlist={waitlist} onRefresh={loadAll}/>}
-            {tab==='breakfast' && <BreakfastTab breakfast={breakfast} settings={settings} onRefresh={loadAll}/>}
+            {tab==='breakfast' && <BreakfastTab breakfast={breakfast} settings={settings} onRefresh={()=>loadAll(true)}/>}
             {tab==='stats'     && <StatsTab reservations={reservations} breakfast={breakfast} settings={settings}/>}
             {tab==='tables'    && <TablesManager tables={tables} groups={groups} onRefresh={loadAll}/>}
             {tab==='settings' && role==='admin' && <SettingsTab settings={settings} onSave={s=>setSettings(s)} tags={tags} onTagsChange={()=>getTags().then(setTags)}/>}
@@ -2381,10 +2731,11 @@ function AdminContent({ role }) {
         )}
       </div>
 
-      {newModal    && <Modal title="New manual reservation" onClose={()=>setNewModal(false)}><ReservationForm tables={tables} tags={tags} groups={groups} onSave={handleCreate} onCancel={()=>setNewModal(false)} loading={saving}/></Modal>}
-      {editModal   && <Modal title="Edit reservation" onClose={()=>setEditModal(null)}><ReservationForm initial={{...editModal, time:fmtTime(editModal.time), table_ids:editModal.table_ids||[]}} tables={tables} tags={tags} groups={groups} onSave={handleUpdate} onCancel={()=>setEditModal(null)} loading={saving}/></Modal>}
+      {todayNewModal && <Modal title="New manual reservation" onClose={()=>setTodayNewModal(false)}><ReservationForm initial={{ date:todayISO() }} tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleCreate} onCancel={()=>setTodayNewModal(false)} loading={saving}/></Modal>}
+      {newModal    && <Modal title="New manual reservation" onClose={()=>setNewModal(false)}><ReservationForm tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleCreate} onCancel={()=>setNewModal(false)} loading={saving}/></Modal>}
+      {editModal   && <Modal title="Edit reservation" onClose={()=>setEditModal(null)}><ReservationForm initial={{...editModal, time:fmtTime(editModal.time), table_ids:editModal.table_ids||[]}} tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleUpdate} onCancel={()=>setEditModal(null)} loading={saving}/></Modal>}
       {deleteModal && <Confirm message={`Delete reservation for ${deleteModal.first_name} ${deleteModal.last_name} (${fmtDate(deleteModal.date)}, ${fmtTime(deleteModal.time)})?`} onYes={handleDelete} onNo={()=>setDeleteModal(null)}/>}
-      {walkInModal && <WalkInModal tables={tables} onSave={handleWalkIn} onClose={()=>setWalkInModal(false)} loading={saving}/>}
+      {walkInModal && <WalkInModal tables={tables} groups={groups} reservations={reservations.filter(r=>r.date===todayISO())} onSave={handleWalkIn} onClose={()=>setWalkInModal(false)} loading={saving}/>}
     </div>
   )
 }
