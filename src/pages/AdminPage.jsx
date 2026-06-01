@@ -2367,6 +2367,7 @@ function SettingsTab({ settings, onSave, tags=[], onTagsChange }) {
                 {window.location.origin}{path}
               </code>
               <Btn size="sm" onClick={()=>navigator.clipboard.writeText(window.location.origin+path)}>Copy</Btn>
+              <Btn size="sm" variant="secondary" onClick={()=>window.open(window.location.origin+path,'_blank')}>↗ Open</Btn>
             </div>
           ))}
         </div>
