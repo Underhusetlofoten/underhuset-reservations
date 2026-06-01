@@ -116,6 +116,7 @@ function noShowEmail(r) {
 }
 
 function breakfastConfirmationEmail(r) {
+  const cancelUrl = `${APP_URL}/api/cancel-breakfast?token=${r.cancel_token}`
   return baseEmail(`
     <h2 style="color:#3C4242;margin:0 0 8px">Breakfast Reservation Confirmed ✓</h2>
     <p style="color:#8A8F8F;margin:0 0 24px;font-size:14px">We look forward to welcoming you for breakfast at Underhuset!</p>
@@ -126,8 +127,9 @@ function breakfastConfirmationEmail(r) {
     ${r.hotel ? `<div class="detail-row"><span class="detail-label">🏨 Property</span><span class="detail-value">${r.hotel}</span></div>` : ''}
     ${r.notes ? `<div class="detail-row"><span class="detail-label">📝 Notes</span><span class="detail-value">${r.notes}</span></div>` : ''}
     <div class="notice">
-      We look forward to seeing you! If you need to cancel, please let us know as soon as possible.
+      Need to cancel? You can do so up to the day before your reservation using the button below.
     </div>
+    ${r.cancel_token ? `<center style="margin-top:20px"><a href="${cancelUrl}" style="background:#EF4444;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px">Cancel reservation</a></center>` : ''}
   `)
 }
 
