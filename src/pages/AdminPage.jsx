@@ -372,7 +372,7 @@ function GuestAutocomplete({ value, onChange, onSelect }) {
   )
 }
 
-function ReservationForm({ initial={}, tables=[], tags=[], groups=[], reservations=[], onSave, onCancel, loading }) {
+function ReservationForm({ initial={}, tables=[], tags=[], groups=[], reservations=[], onSave, onCancel, onResendEmail, loading }) {
   const initTableIds = initial.table_ids || (initial.table_id ? [initial.table_id] : [])
   const initTagIds = (() => {
     try {
@@ -470,6 +470,7 @@ function ReservationForm({ initial={}, tables=[], tags=[], groups=[], reservatio
           onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
       </div>
       <div style={{ gridColumn:'1/-1', display:'flex', gap:12 }}>
+        {onResendEmail && <Btn variant="secondary" onClick={()=>onResendEmail(f)} style={{ flex:1, background:"#fff3e0", color:"#e65100" }}>📧 Resend confirmation</Btn>}
         <Btn variant="secondary" onClick={onCancel} style={{ flex:1 }}>Cancel</Btn>
         <Btn onClick={()=>onSave(f)} disabled={!valid||loading} style={{ flex:2 }}>
           {loading ? 'Saving…' : '✓ Save reservation'}
@@ -2731,7 +2732,7 @@ function AdminContent({ role }) {
 
       {todayNewModal && <Modal title="New manual reservation" onClose={()=>setTodayNewModal(false)}><ReservationForm initial={{ date:todayISO() }} tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleCreate} onCancel={()=>setTodayNewModal(false)} loading={saving}/></Modal>}
       {newModal    && <Modal title="New manual reservation" onClose={()=>setNewModal(false)}><ReservationForm tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleCreate} onCancel={()=>setNewModal(false)} loading={saving}/></Modal>}
-      {editModal   && <Modal title="Edit reservation" onClose={()=>setEditModal(null)}><ReservationForm initial={{...editModal, time:fmtTime(editModal.time), table_ids:editModal.table_ids||[]}} tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleUpdate} onCancel={()=>setEditModal(null)} loading={saving}/></Modal>}
+      {editModal   && <Modal title="Edit reservation" onClose={()=>setEditModal(null)}><ReservationForm initial={{...editModal, time:fmtTime(editModal.time), table_ids:editModal.table_ids||[]}} tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleUpdate} onResendEmail={async(f)=>{ await sendEmail("confirmation",{reservation:{...editModal,...f}}) }} onCancel={()=>setEditModal(null)} loading={saving}/></Modal>}
       {deleteModal && <Confirm message={`Delete reservation for ${deleteModal.first_name} ${deleteModal.last_name} (${fmtDate(deleteModal.date)}, ${fmtTime(deleteModal.time)})?`} onYes={handleDelete} onNo={()=>setDeleteModal(null)}/>}
       {walkInModal && <WalkInModal tables={tables} groups={groups} reservations={reservations.filter(r=>r.date===todayISO())} onSave={handleWalkIn} onClose={()=>setWalkInModal(false)} loading={saving}/>}
     </div>
