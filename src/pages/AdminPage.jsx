@@ -695,7 +695,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
   const getResForTable = (tableId) => activeRes.filter(r => {
     if (r.table_id === tableId) return true
     try {
-      const ids = typeof r.table_ids === 'string' ? JSON.parse(r.table_ids) : (r.table_ids||[])
+      let ids = []; try { ids = typeof r.table_ids === "string" ? JSON.parse(r.table_ids||"[]") : (r.table_ids||[]) } catch { ids = [] }
       return ids.includes(tableId)
     } catch { return false }
   })
@@ -2732,7 +2732,7 @@ function AdminContent({ role }) {
 
       {todayNewModal && <Modal title="New manual reservation" onClose={()=>setTodayNewModal(false)}><ReservationForm initial={{ date:todayISO() }} tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleCreate} onCancel={()=>setTodayNewModal(false)} loading={saving}/></Modal>}
       {newModal    && <Modal title="New manual reservation" onClose={()=>setNewModal(false)}><ReservationForm tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleCreate} onCancel={()=>setNewModal(false)} loading={saving}/></Modal>}
-      {editModal   && <Modal title="Edit reservation" onClose={()=>setEditModal(null)}><ReservationForm initial={{...editModal, time:fmtTime(editModal.time), table_ids:typeof editModal.table_ids==="string" ? JSON.parse(editModal.table_ids||"[]") : (editModal.table_ids||[])}} tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleUpdate} onResendEmail={async(f)=>{ await sendEmail("confirmation",{reservation:{...editModal,...f}}) }} onCancel={()=>setEditModal(null)} loading={saving}/></Modal>}
+      {editModal   && <Modal title="Edit reservation" onClose={()=>setEditModal(null)}><ReservationForm initial={{...editModal, time:fmtTime(editModal.time), table_ids:(()=>{ try { return typeof editModal.table_ids==="string" ? JSON.parse(editModal.table_ids||"[]") : (editModal.table_ids||[]) } catch { return [] } })()}} tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleUpdate} onResendEmail={async(f)=>{ await sendEmail("confirmation",{reservation:{...editModal,...f}}) }} onCancel={()=>setEditModal(null)} loading={saving}/></Modal>}
       {deleteModal && <Confirm message={`Delete reservation for ${deleteModal.first_name} ${deleteModal.last_name} (${fmtDate(deleteModal.date)}, ${fmtTime(deleteModal.time)})?`} onYes={handleDelete} onNo={()=>setDeleteModal(null)}/>}
       {walkInModal && <WalkInModal tables={tables} groups={groups} reservations={reservations.filter(r=>r.date===todayISO())} onSave={handleWalkIn} onClose={()=>setWalkInModal(false)} loading={saving}/>}
     </div>
