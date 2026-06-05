@@ -373,7 +373,7 @@ function GuestAutocomplete({ value, onChange, onSelect }) {
 }
 
 function ReservationForm({ initial={}, tables=[], tags=[], groups=[], reservations=[], onSave, onCancel, onResendEmail, loading }) {
-  const initTableIds = initial.table_ids || (initial.table_id ? [initial.table_id] : [])
+  const initTableIds = typeof initial.table_ids==="string" ? (()=>{try{return JSON.parse(initial.table_ids||"[]")}catch{return initial.table_id?[initial.table_id]:[]}})() : (initial.table_ids || (initial.table_id ? [initial.table_id] : []))
   const initTagIds = (() => {
     try {
       const v = initial.tag_ids
@@ -450,7 +450,7 @@ function ReservationForm({ initial={}, tables=[], tags=[], groups=[], reservatio
       <div style={{ gridColumn:'1/-1' }}><Input label="Email *" type="email" value={f.email} onChange={v=>upd('email',v)} /></div>
       <div style={{ gridColumn:'1/-1' }}><Input label="Phone *" type="tel" value={f.phone} onChange={v=>upd('phone',v)} /></div>
       <div style={{ gridColumn:'1/-1' }}>
-        <TableSelector tables={tables} groups={groups} selectedIds={f.table_ids||[]} occupiedIds={occupiedIds} onChange={ids=>upd('table_ids',ids)}/>
+        <TableSelector tables={tables} groups={groups} selectedIds={Array.isArray(f.table_ids) ? f.table_ids : (typeof f.table_ids==="string" ? (()=>{try{return JSON.parse(f.table_ids||"[]")}catch{return []}})() : [])} occupiedIds={occupiedIds} onChange={ids=>upd('table_ids',ids)}/>
       </div>
       <div style={{ gridColumn:'1/-1' }}>
         <label style={S.label}>Internal notes</label>
