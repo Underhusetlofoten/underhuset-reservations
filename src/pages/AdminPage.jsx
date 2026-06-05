@@ -2534,9 +2534,9 @@ function AdminContent({ role }) {
     try {
       const r = await createReservation({ date:f.date, time:f.custom_time||f.time, guests:parseInt(f.guests),
         first_name:f.first_name, last_name:f.last_name, email:f.email, phone:f.phone,
-        notes:f.notes, contact_person:f.contact_person||null, custom_time:f.custom_time||null, merged_with:f.merged_with||null, tag_ids:JSON.stringify(f.tag_ids||[]), status:f.status,
+        notes:f.notes, contact_person:f.contact_person||null, custom_time:f.custom_time||null, merged_with:f.merged_with||null, tag_ids:f.tag_ids||[], status:f.status,
         table_id: f.table_ids?.length>0 ? f.table_ids[0] : null,
-        table_ids: JSON.stringify(f.table_ids||[]),
+        table_ids: f.table_ids||[],
         is_manual:true })
       if (settings.email_confirmation==='true') await sendEmail('confirmation', { reservation:r })
       setNewModal(false); setTodayNewModal(false); loadAll()
