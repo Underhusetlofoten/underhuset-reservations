@@ -1147,7 +1147,7 @@ function ExpandableNote({ note }) {
   )
 }
 
-function ReservationsList({ reservations, tables, tags=[], groups=[], onNew, onEdit, onDelete, onSeated, onEarlyFree }) {
+function ReservationsList({ reservations, tables, tags=[], groups=[], onNew, onEdit, onDelete, onCancel, onSeated, onEarlyFree }) {
   const [dateFilter,   setDateFilter]   = useState('')
   const [statusFilter, setStatusFilter] = useState('confirmed')
   const [search,       setSearch]       = useState('')
@@ -1384,6 +1384,7 @@ function ReservationsList({ reservations, tables, tags=[], groups=[], onNew, onE
                 </td>
                 <td style={{...S.td, whiteSpace:'nowrap'}}>
                   <div style={{ display:'flex', gap:6 }}>
+                    {r.status !== "cancelled" && <Btn size="sm" variant="secondary" onClick={()=>onCancel(r)} style={{ background:"#fff3e0", color:"#e65100" }}>✕ Cancel</Btn>}
                     <Btn size="sm" variant="danger" onClick={()=>onDelete(r)}>×</Btn>
                   </div>
                 </td>
@@ -2557,7 +2558,6 @@ function AdminContent({ role }) {
           await updateWaitlistEntry(next.id, { status:'notified', notified_at:new Date().toISOString() })
           await sendEmail('waitlist_spot', { entry:next })
         }
-        if (settings.email_cancellation==='true') await sendEmail('cancellation', { reservation:editModal })
       }
       setEditModal(null); loadAll()
     } finally { setSaving(false) }
@@ -2580,6 +2580,18 @@ function AdminContent({ role }) {
     }
     loadAll()
   }
+
+  const handleCancel = async (r) => {
+    await updateReservation(r.id, { status: 'cancelled' })
+    if (settings.email_cancellation === 'true') await sendEmail('cancellation', { reservation: r })
+    const next = await getNextWaiting(r.date, r.time)
+    if (next) {
+      await updateWaitlistEntry(next.id, { status:'notified', notified_at:new Date().toISOString() })
+      await sendEmail('waitlist_spot', { entry:next })
+    }
+    loadAll()
+  }
+
 
   const handleWalkIn = async (f) => {
     setSaving(true)
@@ -2654,7 +2666,7 @@ function AdminContent({ role }) {
               onWalkIn={()=>setWalkInModal(true)} onNewRes={()=>setTodayNewModal(true)} onRefresh={loadAll}/>}
             {tab==='reservations' && <>
               <ReservationsList reservations={reservations} tables={tables} tags={tags} groups={groups}
-                onNew={()=>setNewModal(true)} onEdit={r=>setEditModal(r)} onDelete={r=>setDeleteModal(r)}
+                onNew={()=>setNewModal(true)} onEdit={r=>setEditModal(r)} onDelete={r=>setDeleteModal(r)} onCancel={handleCancel}
                 onSeated={handleSeated} onEarlyFree={handleEarlyFree}/>
               {cancelled.length > 0 && (
                 <div style={{ marginTop:16 }}>
