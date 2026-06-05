@@ -61,7 +61,7 @@ function GroupBadge({ name, tableNums }) {
 }
 function TableCell({ r, tables, groups=[] }) {
   // Check if selected tables match a group
-  const tids = r.table_ids || (r.table_id ? [r.table_id] : [])
+  const tids = typeof r.table_ids==="string" ? JSON.parse(r.table_ids||"[]") : (r.table_ids || (r.table_id ? [r.table_id] : []))
   const matchGroup = groups.find(g =>
     g.is_active &&
     (g.table_ids||[]).length > 0 &&
