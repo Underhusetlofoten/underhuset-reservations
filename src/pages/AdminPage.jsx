@@ -1178,7 +1178,7 @@ function ReservationsList({ reservations, tables, tags=[], groups=[], onNew, onE
   })
   const exportData = view==='month' ? monthFiltered : filtered
 
-  const tName = (r) => tables.find(t=>t.id===r.table_id)?.name || (r.table_ids?.length ? r.table_ids.map(id=>tables.find(t=>t.id===id)?.name||'').filter(Boolean).join('+') : '—')
+  const tName = (r) => { const ids = typeof r.table_ids==="string" ? (()=>{try{return JSON.parse(r.table_ids||"[]")}catch{return []}})() : (r.table_ids||[]); return tables.find(t=>t.id===r.table_id)?.name || (ids.length ? ids.map(id=>tables.find(t=>t.id===id)?.name||"").filter(Boolean).join("+") : "—") }
 
   const exportExcel = () => {
     const rows = [
