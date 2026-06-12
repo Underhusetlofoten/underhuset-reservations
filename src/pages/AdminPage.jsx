@@ -766,6 +766,12 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
     if (dx > 8 || dy > 8) hasMoved.current = true
     if (!hasMoved.current) return
     setDragPos({ x: e.clientX, y: e.clientY })
+    // Auto-scroll
+    const _sz = 100, _ss = 15
+    if (e.clientY < _sz) window.scrollBy(0, -_ss)
+    else if (e.clientY > window.innerHeight - _sz) window.scrollBy(0, _ss)
+    const _c = containerRef.current
+    if (_c) { const _r = _c.getBoundingClientRect(); if (e.clientY < _r.top + _sz) _c.scrollTop -= _ss; else if (e.clientY > _r.bottom - _sz) _c.scrollTop += _ss }
     // Find which table row we're over
     for (const [tableId, el] of Object.entries(rowRefs.current)) {
       if (!el) continue
