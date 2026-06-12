@@ -346,20 +346,21 @@ export default function HotelBookingPage(props) {
               </div>
             )}
 
+            {/* Duplicate warning */}
+            {step === 2 && duplicateWarning && (
+              <div style={{ background:'#fff3e0', border:'1px solid #FFA759', borderRadius:10, padding:'12px 16px', marginTop:16 }}>
+                <p style={{ fontSize:13, color:'#e65100', fontWeight:600, margin:0 }}>⚠️ A reservation for <strong>{form.contact_name}</strong> already exists on this date.</p>
+                <p style={{ fontSize:12, color:'#e65100', margin:'4px 0 8px' }}>Do you want to continue anyway?</p>
+                <div style={{ display:'flex', gap:8 }}>
+                  <button onClick={()=>setDuplicateWarning(false)} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid #e65100', background:'#fff', color:'#e65100', cursor:'pointer', fontSize:12 }}>Cancel</button>
+                  <button onClick={()=>confirm(true)} style={{ padding:'6px 14px', borderRadius:8, border:'none', background:'#e65100', color:'#fff', cursor:'pointer', fontSize:12, fontWeight:700 }}>Yes, continue</button>
+                </div>
+              </div>
+            )}
             {/* Navigation */}
             <div style={{ display:'flex', gap:12, marginTop:24 }}>
               {step > 0 && <Btn variant="secondary" onClick={()=>setStep(s=>s-1)} style={{ flex:1 }}>← Back</Btn>}
               {step < 2 && <Btn onClick={()=>setStep(s=>s+1)} disabled={!canNext()} style={{ flex:2 }}>Continue →</Btn>}
-              {step === 2 && duplicateWarning && (
-                <div style={{ gridColumn:'1/-1', background:'#fff3e0', border:'1px solid #FFA759', borderRadius:10, padding:'12px 16px', marginBottom:8 }}>
-                  <p style={{ fontSize:13, color:'#e65100', fontWeight:600, margin:0 }}>⚠️ A reservation for <strong>{form.contact_name}</strong> already exists on this date.</p>
-                  <p style={{ fontSize:12, color:'#e65100', margin:'4px 0 8px' }}>Do you want to continue anyway?</p>
-                  <div style={{ display:'flex', gap:8 }}>
-                    <button onClick={()=>setDuplicateWarning(false)} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid #e65100', background:'#fff', color:'#e65100', cursor:'pointer', fontSize:12 }}>Cancel</button>
-                    <button onClick={()=>confirm(true)} style={{ padding:'6px 14px', borderRadius:8, border:'none', background:'#e65100', color:'#fff', cursor:'pointer', fontSize:12, fontWeight:700 }}>Yes, continue</button>
-                  </div>
-                </div>
-              )}
               {step === 2 && <Btn onClick={confirm} disabled={loading} style={{ flex:2 }}>{loading?'Booking…':'✓ Confirm'}</Btn>}
             </div>
           </>
