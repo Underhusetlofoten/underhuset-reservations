@@ -363,7 +363,7 @@ export default function HotelBookingPage(props) {
             <div style={{ display:'flex', gap:12, marginTop:24 }}>
               {step > 0 && <Btn variant="secondary" onClick={()=>setStep(s=>s-1)} style={{ flex:1 }}>← Back</Btn>}
               {step < 2 && <Btn onClick={()=>setStep(s=>s+1)} disabled={!canNext()} style={{ flex:2 }}>Continue →</Btn>}
-              {step === 2 && <Btn onClick={confirm} disabled={loading} style={{ flex:2 }}>{loading?'Booking…':'✓ Confirm'}</Btn>}
+              {step === 2 && <Btn onClick={()=>confirm()} disabled={loading} style={{ flex:2 }}>{loading?'Booking…':'✓ Confirm'}</Btn>}
             </div>
           </>
         )}
