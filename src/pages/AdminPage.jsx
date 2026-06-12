@@ -1933,7 +1933,7 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
                 <td style={{...S.td,whiteSpace:'nowrap'}}>
                   <div style={{ display:'flex', gap:6 }}>
                     <Btn size="sm" variant="secondary" onClick={()=>setEditModal(r)}>Edit</Btn>
-                    <Btn size="sm" variant="danger" onClick={()=>setConfirm(r)}>×</Btn>
+                    {r.status!=='cancelled' && <Btn size="sm" variant="secondary" onClick={async()=>{ await updateBreakfastReservation(r.id,{status:'cancelled'}); onRefresh() }} style={{ background:'#FEE2E2',color:'#EF4444',border:'1px solid #FCA5A5' }}>✕ Cancel</Btn>}
                   </div>
                 </td>
               </tr>
