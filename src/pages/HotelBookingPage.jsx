@@ -180,8 +180,10 @@ export default function HotelBookingPage(props) {
   const confirm = async (force=false) => {
     if (!force) {
       const isDuplicate = await checkDuplicateBooking(toISO(date), form.contact_name)
+      console.log('isDuplicate:', isDuplicate, 'date:', toISO(date), 'name:', form.contact_name)
       if (isDuplicate) { setDuplicateWarning(true); return }
     }
+    console.log('duplicate check passed, force=', force)
     setDuplicateWarning(false)
     setLoading(true); setError(null)
     try {
