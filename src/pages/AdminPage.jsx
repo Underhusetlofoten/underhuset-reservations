@@ -1656,6 +1656,7 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
   const [confirm,     setConfirm]     = useState(null)
   const [saving,      setSaving]      = useState(false)
   const [exporting,   setExporting]   = useState(false)
+  const [showCancelledB, setShowCancelledB] = useState(false)
   const [staffDay,    setStaffDay]    = useState('')
   const [staffSaving, setStaffSaving] = useState(false)
 
@@ -1941,6 +1942,43 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
         </table>
       </div>
       <p style={{ fontSize:12, color:B.gray, marginTop:10 }}>{filtered.length} reservation(s) · {totalGuests} guests total</p>
+
+      {/* Cancelled/No-show section */}
+      {breakfast.filter(r=>(r.status==='cancelled'||r.status==='no_show')&&(!dateFilter||r.date===dateFilter)&&(!hotelFilter||r.hotel===hotelFilter)).length > 0 && (
+        <div style={{ marginTop:16 }}>
+          <button onClick={()=>setShowCancelledB(v=>!v)} style={{ background:'none', border:`1px solid ${B.grayLight}`, borderRadius:8, padding:'8px 16px', fontSize:13, cursor:'pointer', color:B.gray }}>
+            {showCancelledB?'▾ Hide':'▸ Show'} cancelled/no-show ({breakfast.filter(r=>(r.status==='cancelled'||r.status==='no_show')&&(!dateFilter||r.date===dateFilter)&&(!hotelFilter||r.hotel===hotelFilter)).length})
+          </button>
+          {showCancelledB && (
+            <div style={{ marginTop:12, border:`1px solid ${B.grayLight}`, borderRadius:12, overflow:'auto' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                <thead>
+                  <tr style={{ background:'#FAF6F0' }}>
+                    {['Date','Property','Guests','Contact','Status',''].map(h=><th key={h} style={{ padding:'10px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:B.gray, textTransform:'uppercase' }}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {breakfast.filter(r=>(r.status==='cancelled'||r.status==='no_show')&&(!dateFilter||r.date===dateFilter)&&(!hotelFilter||r.hotel===hotelFilter)).map(r=>(
+                    <tr key={r.id} style={{ borderTop:`1px solid ${B.grayLight}` }}>
+                      <td style={{ padding:'10px 12px' }}>{fmtDate(r.date)}</td>
+                      <td style={{ padding:'10px 12px' }}><span style={{ background:B.blueLight,color:B.blue,padding:'2px 8px',borderRadius:6,fontSize:12,fontWeight:600 }}>{r.hotel}</span></td>
+                      <td style={{ padding:'10px 12px', fontWeight:700 }}>👥 {r.guests}</td>
+                      <td style={{ padding:'10px 12px' }}>{r.contact_name}</td>
+                      <td style={{ padding:'10px 12px' }}>
+                        {r.status==='cancelled'&&<span style={{ background:B.redLight,color:B.red,padding:'3px 12px',borderRadius:20,fontSize:11,fontWeight:700 }}>❌ Cancelled</span>}
+                        {r.status==='no_show'&&<span style={{ background:'#F3F4F6',color:'#6B7280',padding:'3px 12px',borderRadius:20,fontSize:11,fontWeight:700 }}>🚫 No-show</span>}
+                      </td>
+                      <td style={{ padding:'10px 12px' }}>
+                        <Btn size="sm" variant="secondary" onClick={async()=>{ await updateBreakfastReservation(r.id,{status:'confirmed'}); onRefresh() }} style={{ background:'#D1FAE5',color:'#065F46',border:'1px solid #6EE7B7' }}>↩ Restore</Btn>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {newModal  && <Modal title="New breakfast reservation" onClose={()=>setNewModal(false)}><BreakfastForm onSave={save} onCancel={()=>setNewModal(false)}/></Modal>}
       {editModal && <Modal title="Edit breakfast reservation" onClose={()=>setEditModal(null)}><BreakfastForm initial={editModal} onSave={save} onCancel={()=>setEditModal(null)}/></Modal>}
