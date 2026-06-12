@@ -263,13 +263,7 @@ export default function HotelBookingPage() {
                     <input type="tel" value={form.contact_phone} onChange={e=>upd('contact_phone',e.target.value)} placeholder="+47 000 00 000"
                       style={inputStyle} onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
                   </div>
-                  <div>
-                    <label style={labelStyle}>Notes (optional)</label>
-                    <textarea value={form.notes} onChange={e=>upd('notes',e.target.value)} rows={2}
-                      placeholder="Allergies, special requests…"
-                      style={{...inputStyle, resize:'vertical'}}
-                      onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
-                  </div>
+
                 </div>
               </div>
             )}
