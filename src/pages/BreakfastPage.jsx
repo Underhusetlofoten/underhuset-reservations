@@ -236,13 +236,7 @@ export default function HotelBookingPage() {
                 <h2 style={{ textAlign:'center', fontSize:20, fontFamily:'Playfair Display,serif', color:B.dark, marginBottom:6, fontWeight:600 }}>Reservation details</h2>
                 <p style={{ textAlign:'center', color:B.gray, fontSize:13, marginBottom:20, textTransform:'capitalize' }}>{fmtDate(date)}</p>
                 <div style={{ display:'grid', gap:16 }}>
-                  <div>
-                    <label style={labelStyle}>Where are you staying?</label>
-                    <input value={form.hotel} onChange={e=>upd('hotel',e.target.value)}
-                      placeholder="Hotel or accommodation name"
-                      style={inputStyle}
-                      onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
-                  </div>
+
                   <div>
                     <label style={labelStyle}>Number of guests *</label>
                     <div style={{ display:'flex', alignItems:'center', gap:12 }}>
