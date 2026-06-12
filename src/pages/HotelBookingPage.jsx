@@ -29,6 +29,17 @@ async function createBreakfastReservation(payload) {
   return data
 }
 
+
+async function checkDuplicateBooking(date, contactName) {
+  const { data } = await supabase
+    .from('breakfast_reservations')
+    .select('id, contact_name, date')
+    .eq('date', date)
+    .neq('status', 'cancelled')
+    .ilike('contact_name', contactName.trim())
+  return (data||[]).length > 0
+}
+
 function Btn({ children, onClick, disabled, variant='primary', style={} }) {
   const colors = {
     primary: { bg: disabled?B.grayLight:B.orange, color: disabled?B.gray:'#fff' },
@@ -117,6 +128,7 @@ export default function HotelBookingPage(props) {
   const [hotels,   setHotels]   = useState([])
   const [form,     setForm]     = useState({ hotel:'', guests:1, contact_name:'', contact_email:'', contact_phone:'', notes:'' })
   const [loading,  setLoading]  = useState(false)
+  const [duplicateWarning, setDuplicateWarning] = useState(false)
   const [error,    setError]    = useState(null)
   const upd = (k,v) => setForm(f=>({...f,[k]:v}))
 
@@ -333,6 +345,16 @@ export default function HotelBookingPage(props) {
             <div style={{ display:'flex', gap:12, marginTop:24 }}>
               {step > 0 && <Btn variant="secondary" onClick={()=>setStep(s=>s-1)} style={{ flex:1 }}>← Back</Btn>}
               {step < 2 && <Btn onClick={()=>setStep(s=>s+1)} disabled={!canNext()} style={{ flex:2 }}>Continue →</Btn>}
+              {step === 2 && duplicateWarning && (
+                <div style={{ gridColumn:'1/-1', background:'#fff3e0', border:'1px solid #FFA759', borderRadius:10, padding:'12px 16px', marginBottom:8 }}>
+                  <p style={{ fontSize:13, color:'#e65100', fontWeight:600, margin:0 }}>⚠️ A reservation for <strong>{form.contact_name}</strong> already exists on this date.</p>
+                  <p style={{ fontSize:12, color:'#e65100', margin:'4px 0 8px' }}>Do you want to continue anyway?</p>
+                  <div style={{ display:'flex', gap:8 }}>
+                    <button onClick={()=>setDuplicateWarning(false)} style={{ padding:'6px 14px', borderRadius:8, border:'1px solid #e65100', background:'#fff', color:'#e65100', cursor:'pointer', fontSize:12 }}>Cancel</button>
+                    <button onClick={()=>confirm(true)} style={{ padding:'6px 14px', borderRadius:8, border:'none', background:'#e65100', color:'#fff', cursor:'pointer', fontSize:12, fontWeight:700 }}>Yes, continue</button>
+                  </div>
+                </div>
+              )}
               {step === 2 && <Btn onClick={confirm} disabled={loading} style={{ flex:2 }}>{loading?'Booking…':'✓ Confirm'}</Btn>}
             </div>
           </>
