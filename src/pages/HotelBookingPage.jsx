@@ -36,8 +36,8 @@ async function checkDuplicateBooking(date, contactName) {
     .select('id, contact_name, date')
     .eq('date', date)
     .neq('status', 'cancelled')
-    .ilike('contact_name', contactName.trim())
-  return (data||[]).length > 0
+  const name = contactName.trim().toLowerCase()
+  return (data||[]).some(r => r.contact_name?.toLowerCase().trim() === name)
 }
 
 function Btn({ children, onClick, disabled, variant='primary', style={} }) {
