@@ -177,7 +177,12 @@ export default function HotelBookingPage(props) {
     return true
   }
 
-  const confirm = async () => {
+  const confirm = async (force=false) => {
+    if (!force) {
+      const isDuplicate = await checkDuplicateBooking(toISO(date), form.contact_name)
+      if (isDuplicate) { setDuplicateWarning(true); return }
+    }
+    setDuplicateWarning(false)
     setLoading(true); setError(null)
     try {
       const r = await createBreakfastReservation({
