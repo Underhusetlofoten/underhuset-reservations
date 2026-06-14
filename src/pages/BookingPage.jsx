@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { B, MONTHS_EN, DAYS_SHORT, ALL_TIMES, BLOCK_HOURS } from '../brand.js'
 import { createReservation, getAvailableSlots, addToWaitlist, getSettings, sendEmail, autoAssignTable, supabase } from '../lib/supabase.js'
 
@@ -528,6 +528,7 @@ export default function BookingPage({ breakfastLink = '/breakfast' }) {
   const [error,        setError]        = useState(null)
   const [waitlistTime, setWaitlistTime] = useState(null)
   const [duplicateWarning, setDuplicateWarning] = useState(false)
+  const confirmBtnRef = useRef(null)
   const [openingHours, setOpeningHours] = useState(null)
   const [closedPeriods, setClosedPeriods] = useState([])
   const [minGuests,    setMinGuests]    = useState(1)
@@ -618,9 +619,9 @@ export default function BookingPage({ breakfastLink = '/breakfast' }) {
           <div style={{ display:'flex', gap:12, marginTop:28 }}>
             {step>0 && <Btn variant="secondary" onClick={()=>setStep(s=>s-1)} style={{ flex:1 }}>← Back</Btn>}
             {step<4 && <Btn onClick={()=>setStep(s=>s+1)} disabled={!canNext()} style={{ flex:2 }}>Continue →</Btn>}
-            {step===4 && <Btn onClick={()=>confirm()} disabled={loading} style={{ flex:2 }}>
+            {step===4 && <div ref={confirmBtnRef} style={{ flex:2 }}><Btn onClick={()=>confirm()} disabled={loading} style={{ width:'100%' }}>
               {loading ? 'Booking…' : '✓ Confirm reservation'}
-            </Btn>}
+            </Btn></div>}
           </div>
         </>
       )}
