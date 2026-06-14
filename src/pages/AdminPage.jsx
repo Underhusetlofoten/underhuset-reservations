@@ -1650,7 +1650,7 @@ function TablesManager({ tables, groups, onRefresh }) {
 
 function BreakfastTab({ breakfast, settings, onRefresh }) {
   const [dateFilter,  setDateFilter]  = useState('')
-  const [hotelFilter, setHotelFilter] = useState('')
+  const [hotelFilter, setHotelFilter] = useState([])
   const [dateFrom,    setDateFrom]    = useState('')
   const [dateTo,      setDateTo]      = useState('')
   const [newModal,    setNewModal]    = useState(false)
@@ -1687,7 +1687,7 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
     if (dateFilter  && r.date  !== dateFilter)  return false
     if (dateFrom    && r.date  <  dateFrom)     return false
     if (dateTo      && r.date  >  dateTo)       return false
-    if (hotelFilter && r.hotel !== hotelFilter) return false
+    if (hotelFilter.length > 0 && !hotelFilter.includes(r.hotel)) return false
     return true
   })
 
@@ -1744,28 +1744,90 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
     a.click()
   }
 
-  const exportInvoice = () => {
-    const rows = [
-      ['Date','Hotel','Contact','Email','Phone','PAX (billable)','Cancelled','Notes','Staff'],
-      ...filtered.map(r=>[
-        r.date, r.hotel, r.contact_name, r.contact_email||'', r.contact_phone||'',
-        (r.status==='seated'||r.status==='completed'||r.status==='no_show') ? r.guests : '',
-        r.status==='cancelled' ? r.guests : '',
-        r.notes||'', r.staff_names||''
-      ])
+  const exportInvoice = async () => {
+    // Load SheetJS
+    const XLSX = await import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs')
+    const wb = XLSX.utils.book_new()
+
+    // Colors
+    const TEAL   = '3C4242'
+    const ORANGE = 'F99D54'
+    const PALE   = 'FEF4EB'
+    const WHITE  = 'FFFFFF'
+
+    const totalPax = filtered.filter(r=>r.status==='seated'||r.status==='completed'||r.status==='no_show').reduce((s,r)=>s+r.guests,0)
+    const totalCan = filtered.filter(r=>r.status==='cancelled').reduce((s,r)=>s+r.guests,0)
+
+    // Build rows
+    const dataRows = filtered.map(r=>([
+      r.date, r.hotel, r.contact_name, r.contact_email||'', r.contact_phone||'',
+      (r.status==='seated'||r.status==='completed'||r.status==='no_show') ? r.guests : '',
+      r.status==='cancelled' ? r.guests : '',
+      r.notes||'', r.staff_names||''
+    ]))
+
+    // ws data: row1=title, row2=headers, row3+=data, last=total
+    const wsData = [
+      ['UNDERHUSET LOFOTEN — Breakfast Reservations','','','','','','','',''],
+      ['Date','Property','Contact','Email','Phone','PAX (billable)','Cancelled','Notes','Staff'],
+      ...dataRows,
+      ['TOTAL','','','','',totalPax,totalCan,'','']
     ]
-    const completed = filtered.filter(r=>r.status==='seated'||r.status==='completed')
-    const noshow    = filtered.filter(r=>r.status==='no_show')
-    const cancelled = filtered.filter(r=>r.status==='cancelled')
-    const totalPax  = completed.reduce((s,r)=>s+r.guests,0) + noshow.reduce((s,r)=>s+r.guests,0)
-    rows.push([])
-    rows.push(['TOTAL','','','','',totalPax, cancelled.reduce((s,r)=>s+r.guests,0),'',''])
-    const csv = rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n')
-    const blob = new Blob(['\ufeff'+csv], { type:'text/csv;charset=utf-8' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `invoice-${hotelFilter||'all'}-${dateFilter||'all'}.csv`
-    a.click()
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData)
+
+    // Merges
+    ws['!merges'] = [
+      { s:{r:0,c:0}, e:{r:0,c:8} }, // title row
+      { s:{r:wsData.length-1,c:0}, e:{r:wsData.length-1,c:4} } // total row
+    ]
+
+    // Column widths
+    ws['!cols'] = [14,26,24,30,18,14,12,28,22].map(w=>({wch:w}))
+
+    // Row heights
+    ws['!rows'] = [
+      {hpt:32}, // title
+      {hpt:22}, // headers
+      ...dataRows.map(()=>({hpt:18})),
+      {hpt:24}  // total
+    ]
+
+    // Cell styles
+    const titleStyle  = { font:{bold:true,color:{rgb:WHITE},sz:14,name:'Arial'}, fill:{fgColor:{rgb:TEAL}},  alignment:{horizontal:'left',vertical:'center'} }
+    const headerStyle = { font:{bold:true,color:{rgb:WHITE},sz:10,name:'Arial'}, fill:{fgColor:{rgb:ORANGE}}, alignment:{horizontal:'center',vertical:'center'}, border:{top:{style:'thin',color:{rgb:'E0E0E0'}},bottom:{style:'thin',color:{rgb:'E0E0E0'}},left:{style:'thin',color:{rgb:'E0E0E0'}},right:{style:'thin',color:{rgb:'E0E0E0'}}} }
+    const totalStyle  = { font:{bold:true,color:{rgb:WHITE},sz:11,name:'Arial'}, fill:{fgColor:{rgb:TEAL}},  alignment:{horizontal:'center',vertical:'center'} }
+    const totalLStyle = { font:{bold:true,color:{rgb:WHITE},sz:11,name:'Arial'}, fill:{fgColor:{rgb:TEAL}},  alignment:{horizontal:'right',vertical:'center'} }
+
+    const cols = ['A','B','C','D','E','F','G','H','I']
+
+    // Title row styles
+    cols.forEach(c => { if(ws[c+'1']) ws[c+'1'].s = titleStyle })
+
+    // Header row styles
+    cols.forEach(c => { if(ws[c+'2']) ws[c+'2'].s = headerStyle })
+
+    // Data row styles
+    dataRows.forEach((_,i) => {
+      const row = i+3
+      const pale = row % 2 === 0
+      const dataStyle = { font:{name:'Arial',sz:10,color:{rgb:'222222'}}, fill:{fgColor:{rgb: pale ? PALE : WHITE}}, border:{top:{style:'thin',color:{rgb:'E0E0E0'}},bottom:{style:'thin',color:{rgb:'E0E0E0'}},left:{style:'thin',color:{rgb:'E0E0E0'}},right:{style:'thin',color:{rgb:'E0E0E0'}}} }
+      cols.forEach((c,ci) => {
+        const cell = ws[c+row]
+        if(cell) cell.s = {...dataStyle, alignment:{horizontal: [0,5,6].includes(ci)?'center':'left', vertical:'center'}}
+      })
+    })
+
+    // Total row styles
+    const tr = wsData.length
+    cols.forEach((c,ci) => {
+      if(!ws[c+tr]) ws[c+tr] = {v:'',t:'s'}
+      ws[c+tr].s = ci === 0 ? totalLStyle : totalStyle
+    })
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Breakfast Reservations')
+    const filename = `breakfast-reservations-${dateFrom||dateFilter||'all'}_${dateTo||''}.xlsx`
+    XLSX.writeFile(wb, filename)
   }
 
   const BFORM_EMPTY = { date:'', guests:1, hotel:'', contact_name:'', contact_email:'', contact_phone:'', notes:'', staff_names:'', status:'confirmed' }
@@ -1884,16 +1946,19 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
           <input type="date" value={dateTo} onChange={e=>{setDateTo(e.target.value);setDateFilter('')}}
             style={{...S.input, width:'auto'}} onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
         </div>
-        <div>
-          <label style={S.label}>Property</label>
-          <select value={hotelFilter} onChange={e=>setHotelFilter(e.target.value)}
-            style={{...S.input, width:'auto', cursor:'pointer'}}>
-            <option value="">All properties</option>
-            {hotels.map(h=><option key={h} value={h}>{h}</option>)}
-          </select>
+        <div style={{ gridColumn:'1/-1' }}>
+          <label style={S.label}>Properties</label>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginTop:6 }}>
+            {hotels.map(h=>(
+              <label key={h} style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', background: hotelFilter.includes(h)?B.orangePale:'#f5f5f5', border:`1px solid ${hotelFilter.includes(h)?B.orange:B.grayLight}`, borderRadius:8, padding:'6px 12px', fontSize:13, fontWeight:600 }}>
+                <input type="checkbox" checked={hotelFilter.includes(h)} onChange={e=>{ setHotelFilter(prev => e.target.checked ? [...prev,h] : prev.filter(x=>x!==h)) }} style={{ accentColor:B.orange }}/>
+                {h}
+              </label>
+            ))}
+          </div>
         </div>
         <div style={{ display:'flex', alignItems:'flex-end' }}>
-          {(dateFilter||hotelFilter||dateFrom||dateTo) && <Btn size="sm" variant="ghost" onClick={()=>{setDateFilter('');setHotelFilter('');setDateFrom('');setDateTo('')}}>✕ Clear</Btn>}
+          {(dateFilter||hotelFilter.length>0||dateFrom||dateTo) && <Btn size="sm" variant="ghost" onClick={()=>{setDateFilter('');setHotelFilter([]);setDateFrom('');setDateTo('')}}>✕ Clear</Btn>}
         </div>
       </div>
 
@@ -1958,10 +2023,10 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
       <p style={{ fontSize:12, color:B.gray, marginTop:10 }}>{filtered.length} reservation(s) · {totalGuests} guests total</p>
 
       {/* Cancelled/No-show section */}
-      {breakfast.filter(r=>(r.status==='cancelled'||r.status==='no_show')&&(!dateFilter||r.date===dateFilter)&&(!hotelFilter||r.hotel===hotelFilter)).length > 0 && (
+      {breakfast.filter(r=>(r.status==='cancelled'||r.status==='no_show')&&(!dateFilter||r.date===dateFilter)&&(hotelFilter.length===0||hotelFilter.includes(r.hotel))).length > 0 && (
         <div style={{ marginTop:16 }}>
           <button onClick={()=>setShowCancelledB(v=>!v)} style={{ background:'none', border:`1px solid ${B.grayLight}`, borderRadius:8, padding:'8px 16px', fontSize:13, cursor:'pointer', color:B.gray }}>
-            {showCancelledB?'▾ Hide':'▸ Show'} cancelled/no-show ({breakfast.filter(r=>(r.status==='cancelled'||r.status==='no_show')&&(!dateFilter||r.date===dateFilter)&&(!hotelFilter||r.hotel===hotelFilter)).length})
+            {showCancelledB?'▾ Hide':'▸ Show'} cancelled/no-show ({breakfast.filter(r=>(r.status==='cancelled'||r.status==='no_show')&&(!dateFilter||r.date===dateFilter)&&(hotelFilter.length===0||hotelFilter.includes(r.hotel))).length})
           </button>
           {showCancelledB && (
             <div style={{ marginTop:12, border:`1px solid ${B.grayLight}`, borderRadius:12, overflow:'auto' }}>
@@ -1972,7 +2037,7 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {breakfast.filter(r=>(r.status==='cancelled'||r.status==='no_show')&&(!dateFilter||r.date===dateFilter)&&(!hotelFilter||r.hotel===hotelFilter)).map(r=>(
+                  {breakfast.filter(r=>(r.status==='cancelled'||r.status==='no_show')&&(!dateFilter||r.date===dateFilter)&&(hotelFilter.length===0||hotelFilter.includes(r.hotel))).map(r=>(
                     <tr key={r.id} style={{ borderTop:`1px solid ${B.grayLight}` }}>
                       <td style={{ padding:'10px 12px' }}>{fmtDate(r.date)}</td>
                       <td style={{ padding:'10px 12px' }}><span style={{ background:B.blueLight,color:B.blue,padding:'2px 8px',borderRadius:6,fontSize:12,fontWeight:600 }}>{r.hotel}</span></td>
