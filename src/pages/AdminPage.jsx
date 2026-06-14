@@ -1745,67 +1745,63 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
   }
 
   const exportInvoice = async () => {
-    const ExcelJS = (await import('exceljs')).default || (await import('exceljs'))
-    const wb = new ExcelJS.Workbook()
-    const ws = wb.addWorksheet('Breakfast Reservations')
-
+    const XLSXStyle = (await import('xlsx-js-style')).default
     const TEAL = '3C4242', ORANGE = 'F99D54', PALE = 'FEF4EB'
 
     const totalPax = filtered.filter(r=>r.status==='seated'||r.status==='completed'||r.status==='no_show').reduce((s,r)=>s+r.guests,0)
     const totalCan = filtered.filter(r=>r.status==='cancelled').reduce((s,r)=>s+r.guests,0)
 
-    // Column widths
-    ws.columns = [
-      {width:14},{width:26},{width:24},{width:30},{width:18},
-      {width:14},{width:12},{width:28},{width:22}
-    ]
+    const border = { top:{style:'thin',color:{rgb:'E0E0E0'}}, bottom:{style:'thin',color:{rgb:'E0E0E0'}}, left:{style:'thin',color:{rgb:'E0E0E0'}}, right:{style:'thin',color:{rgb:'E0E0E0'}} }
+
+    const ws = {}
+    const cols = ['A','B','C','D','E','F','G','H','I']
+    let r = 1
 
     // Title row
-    const titleRow = ws.addRow(['UNDERHUSET LOFOTEN — Breakfast Reservations','','','','','','','',''])
-    titleRow.height = 32
-    ws.mergeCells('A1:I1')
-    titleRow.getCell(1).style = { font:{bold:true,color:{argb:'FF'+ORANGE},size:14,name:'Arial'}, fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FF'+TEAL}}, alignment:{horizontal:'left',vertical:'middle',indent:2} }
+    ws[`A${r}`] = { v:'UNDERHUSET LOFOTEN — Breakfast Reservations', t:'s', s:{ font:{bold:true,color:{rgb:ORANGE},sz:14,name:'Arial'}, fill:{fgColor:{rgb:TEAL},patternType:'solid'}, alignment:{horizontal:'left',vertical:'center',indent:2} }}
+    cols.slice(1).forEach(c => { ws[`${c}${r}`] = { v:'', t:'s', s:{ fill:{fgColor:{rgb:TEAL},patternType:'solid'} } } })
+    r++
 
     // Header row
     const headers = ['Date','Property','Contact','Email','Phone','PAX (billable)','Cancelled','Notes','Staff']
-    const hRow = ws.addRow(headers)
-    hRow.height = 22
-    hRow.eachCell(c => {
-      c.style = { font:{bold:true,color:{argb:'FFFFFFFF'},size:10,name:'Arial'}, fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FF'+ORANGE}}, alignment:{horizontal:'center',vertical:'middle'}, border:{top:{style:'thin',color:{argb:'FFE0E0E0'}},bottom:{style:'thin',color:{argb:'FFE0E0E0'}},left:{style:'thin',color:{argb:'FFE0E0E0'}},right:{style:'thin',color:{argb:'FFE0E0E0'}}} }
+    headers.forEach((h,i) => {
+      ws[`${cols[i]}${r}`] = { v:h, t:'s', s:{ font:{bold:true,color:{rgb:'FFFFFF'},sz:10,name:'Arial'}, fill:{fgColor:{rgb:ORANGE},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border } }
     })
+    r++
 
     // Data rows
-    filtered.forEach((r, i) => {
-      const pale = i % 2 === 0
-      const bg = pale ? PALE : 'FFFFFF'
-      const row = ws.addRow([
-        r.date, r.hotel, r.contact_name, r.contact_email||'', r.contact_phone||'',
-        (r.status==='seated'||r.status==='completed'||r.status==='no_show') ? r.guests : '',
-        r.status==='cancelled' ? r.guests : '',
-        r.notes||'', r.staff_names||''
-      ])
-      row.height = 18
-      row.eachCell({includeEmpty:true}, (c, ci) => {
-        c.style = { font:{name:'Arial',size:10,color:{argb:'FF222222'}}, fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FF'+bg}}, alignment:{horizontal:[1,6,7].includes(ci)?'center':'left',vertical:'middle'}, border:{top:{style:'thin',color:{argb:'FFE0E0E0'}},bottom:{style:'thin',color:{argb:'FFE0E0E0'}},left:{style:'thin',color:{argb:'FFE0E0E0'}},right:{style:'thin',color:{argb:'FFE0E0E0'}}} }
+    filtered.forEach((row, i) => {
+      const bg = i%2===0 ? PALE : 'FFFFFF'
+      const vals = [
+        row.date, row.hotel, row.contact_name, row.contact_email||'', row.contact_phone||'',
+        (row.status==='seated'||row.status==='completed'||row.status==='no_show') ? row.guests : '',
+        row.status==='cancelled' ? row.guests : '',
+        row.notes||'', row.staff_names||''
+      ]
+      vals.forEach((v, ci) => {
+        ws[`${cols[ci]}${r}`] = { v: v==='' ? '' : v, t: typeof v==='number'?'n':'s', s:{ font:{name:'Arial',sz:10,color:{rgb:'222222'}}, fill:{fgColor:{rgb:bg},patternType:'solid'}, alignment:{horizontal:[0,5,6].includes(ci)?'center':'left',vertical:'center'}, border } }
       })
+      r++
     })
 
     // Total row
-    const totalRow = ws.addRow(['TOTAL','','','','',totalPax,totalCan,'',''])
-    totalRow.height = 24
-    ws.mergeCells(`A${totalRow.number}:E${totalRow.number}`)
-    totalRow.eachCell({includeEmpty:true}, (c, ci) => {
-      c.style = { font:{bold:true,color:{argb:'FFFFFFFF'},size:11,name:'Arial'}, fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FF'+TEAL}}, alignment:{horizontal: ci===1 ? 'right' : 'center', vertical:'middle'}, border:{top:{style:'thin',color:{argb:'FFE0E0E0'}},bottom:{style:'thin',color:{argb:'FFE0E0E0'}},left:{style:'thin',color:{argb:'FFE0E0E0'}},right:{style:'thin',color:{argb:'FFE0E0E0'}}} }
+    ws[`A${r}`] = { v:'TOTAL', t:'s', s:{ font:{bold:true,color:{rgb:'FFFFFF'},sz:11,name:'Arial'}, fill:{fgColor:{rgb:TEAL},patternType:'solid'}, alignment:{horizontal:'right',vertical:'center',indent:2}, border } }
+    cols.slice(1).forEach((c,i) => {
+      const v = i===4 ? totalPax : i===5 ? totalCan : ''
+      ws[`${c}${r}`] = { v, t: typeof v==='number'?'n':'s', s:{ font:{bold:true,color:{rgb:'FFFFFF'},sz:11,name:'Arial'}, fill:{fgColor:{rgb:TEAL},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border } }
     })
 
-    ws.views = [{ state:'frozen', ySplit:2 }]
+    const totalRows = filtered.length + 3
+    ws['!ref'] = `A1:I${totalRows}`
+    ws['!merges'] = [
+      {s:{r:0,c:0}, e:{r:0,c:8}},
+      {s:{r:totalRows-1,c:0}, e:{r:totalRows-1,c:4}}
+    ]
+    ws['!cols'] = [14,26,24,30,18,14,12,28,22].map(w=>({wch:w}))
+    ws['!rows'] = [{hpt:32},{hpt:22},...filtered.map(()=>({hpt:18})),{hpt:24}]
 
-    const buf = await wb.xlsx.writeBuffer()
-    const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `breakfast-reservations-${dateFrom||dateFilter||'all'}${dateTo?'_'+dateTo:''}.xlsx`
-    a.click()
+    const wb = { SheetNames:['Breakfast Reservations'], Sheets:{'Breakfast Reservations':ws} }
+    XLSXStyle.writeFile(wb, `breakfast-reservations-${dateFrom||dateFilter||'all'}${dateTo?'_'+dateTo:''}.xlsx`)
   }
 
   const BFORM_EMPTY = { date:'', guests:1, hotel:'', contact_name:'', contact_email:'', contact_phone:'', notes:'', staff_names:'', status:'confirmed' }
