@@ -1774,7 +1774,7 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
       const bg = i%2===0 ? PALE : 'FFFFFF'
       const vals = [
         row.date, row.hotel, row.contact_name, row.contact_email||'', row.contact_phone||'',
-        (row.status==='seated'||row.status==='completed'||row.status==='no_show') ? row.guests : '',
+        (row.status==='seated'||row.status==='completed'||row.status==='no_show'||row.status==='confirmed') ? row.guests : '',
         row.status==='cancelled' ? row.guests : '',
         row.notes||'', row.staff_names||''
       ]
