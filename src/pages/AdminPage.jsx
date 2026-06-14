@@ -1748,8 +1748,11 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
     const XLSXStyle = (await import('xlsx-js-style')).default
     const TEAL = '3C4242', ORANGE = 'F99D54', PALE = 'FEF4EB'
 
-    const totalPax = filtered.filter(r=>r.status==='seated'||r.status==='completed'||r.status==='no_show').reduce((s,r)=>s+r.guests,0)
+    const totalPax = filtered.filter(r=>r.status==='seated'||r.status==='completed'||r.status==='no_show'||r.status==='confirmed').reduce((s,r)=>s+r.guests,0)
     const totalCan = filtered.filter(r=>r.status==='cancelled').reduce((s,r)=>s+r.guests,0)
+
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    const fmtD = (d) => { if(!d) return ''; const [y,m,day] = d.split('-'); return `${parseInt(day)}-${MONTHS[parseInt(m)-1]}-${y}` }
 
     const border = { top:{style:'thin',color:{rgb:'E0E0E0'}}, bottom:{style:'thin',color:{rgb:'E0E0E0'}}, left:{style:'thin',color:{rgb:'E0E0E0'}}, right:{style:'thin',color:{rgb:'E0E0E0'}} }
 
@@ -1773,7 +1776,7 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
     filtered.forEach((row, i) => {
       const bg = i%2===0 ? PALE : 'FFFFFF'
       const vals = [
-        row.date, row.hotel, row.contact_name, row.contact_email||'', row.contact_phone||'',
+        fmtD(row.date), row.hotel, row.contact_name, row.contact_email||'', row.contact_phone||'',
         (row.status==='seated'||row.status==='completed'||row.status==='no_show'||row.status==='confirmed') ? row.guests : '',
         row.status==='cancelled' ? row.guests : '',
         row.notes||'', row.staff_names||''
@@ -1785,10 +1788,10 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
     })
 
     // Total row
-    ws[`A${r}`] = { v:'TOTAL', t:'s', s:{ font:{bold:true,color:{rgb:'FFFFFF'},sz:11,name:'Arial'}, fill:{fgColor:{rgb:TEAL},patternType:'solid'}, alignment:{horizontal:'right',vertical:'center',indent:2}, border } }
+    ws[`A${r}`] = { v:'TOTAL', t:'s', s:{ font:{bold:true,color:{rgb:'FFFFFF'},sz:14,name:'Arial'}, fill:{fgColor:{rgb:TEAL},patternType:'solid'}, alignment:{horizontal:'right',vertical:'center',indent:2}, border } }
     cols.slice(1).forEach((c,i) => {
       const v = i===4 ? totalPax : i===5 ? totalCan : ''
-      ws[`${c}${r}`] = { v, t: typeof v==='number'?'n':'s', s:{ font:{bold:true,color:{rgb:'FFFFFF'},sz:11,name:'Arial'}, fill:{fgColor:{rgb:TEAL},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border } }
+      ws[`${c}${r}`] = { v, t: typeof v==='number'?'n':'s', s:{ font:{bold:true,color:{rgb:'FFFFFF'},sz:14,name:'Arial'}, fill:{fgColor:{rgb:TEAL},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border } }
     })
 
     const totalRows = filtered.length + 3
@@ -1798,7 +1801,7 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
       {s:{r:totalRows-1,c:0}, e:{r:totalRows-1,c:4}}
     ]
     ws['!cols'] = [14,26,24,30,18,14,12,28,22].map(w=>({wch:w}))
-    ws['!rows'] = [{hpt:32},{hpt:22},...filtered.map(()=>({hpt:18})),{hpt:24}]
+    ws['!rows'] = [{hpt:32},{hpt:22},...filtered.map(()=>({hpt:18})),{hpt:48}]
 
     const wb = { SheetNames:['Breakfast Reservations'], Sheets:{'Breakfast Reservations':ws} }
     XLSXStyle.writeFile(wb, `breakfast-reservations-${dateFrom||dateFilter||'all'}${dateTo?'_'+dateTo:''}.xlsx`)
