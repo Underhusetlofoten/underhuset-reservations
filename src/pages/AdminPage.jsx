@@ -1651,6 +1651,8 @@ function TablesManager({ tables, groups, onRefresh }) {
 function BreakfastTab({ breakfast, settings, onRefresh }) {
   const [dateFilter,  setDateFilter]  = useState('')
   const [hotelFilter, setHotelFilter] = useState('')
+  const [dateFrom,    setDateFrom]    = useState('')
+  const [dateTo,      setDateTo]      = useState('')
   const [newModal,    setNewModal]    = useState(false)
   const [editModal,   setEditModal]   = useState(null)
   const [confirm,     setConfirm]     = useState(null)
@@ -1683,6 +1685,8 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
 
   const filtered = breakfast.filter(r => {
     if (dateFilter  && r.date  !== dateFilter)  return false
+    if (dateFrom    && r.date  <  dateFrom)     return false
+    if (dateTo      && r.date  >  dateTo)       return false
     if (hotelFilter && r.hotel !== hotelFilter) return false
     return true
   })
@@ -1866,20 +1870,30 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
       {/* Filters */}
       <div style={{ display:'grid', gridTemplateColumns:'auto auto auto', gap:12, marginBottom:16, alignItems:'end' }}>
         <div>
-          <label style={S.label}>Date</label>
-          <input type="date" value={dateFilter} onChange={e=>setDateFilter(e.target.value)}
+          <label style={S.label}>Exact date</label>
+          <input type="date" value={dateFilter} onChange={e=>{setDateFilter(e.target.value);setDateFrom('');setDateTo('')}}
+            style={{...S.input, width:'auto'}} onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
+        </div>
+        <div>
+          <label style={S.label}>From</label>
+          <input type="date" value={dateFrom} onChange={e=>{setDateFrom(e.target.value);setDateFilter('')}}
+            style={{...S.input, width:'auto'}} onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
+        </div>
+        <div>
+          <label style={S.label}>To</label>
+          <input type="date" value={dateTo} onChange={e=>{setDateTo(e.target.value);setDateFilter('')}}
             style={{...S.input, width:'auto'}} onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
         </div>
         <div>
           <label style={S.label}>Property</label>
           <select value={hotelFilter} onChange={e=>setHotelFilter(e.target.value)}
             style={{...S.input, width:'auto', cursor:'pointer'}}>
-            <option value="">All</option>
+            <option value="">All properties</option>
             {hotels.map(h=><option key={h} value={h}>{h}</option>)}
           </select>
         </div>
         <div style={{ display:'flex', alignItems:'flex-end' }}>
-          {(dateFilter||hotelFilter) && <Btn size="sm" variant="ghost" onClick={()=>{setDateFilter('');setHotelFilter('')}}>✕ Clear</Btn>}
+          {(dateFilter||hotelFilter||dateFrom||dateTo) && <Btn size="sm" variant="ghost" onClick={()=>{setDateFilter('');setHotelFilter('');setDateFrom('');setDateTo('')}}>✕ Clear</Btn>}
         </div>
       </div>
 
