@@ -598,6 +598,19 @@ export default function BookingPage({ breakfastLink = '/breakfast' }) {
           <Steps step={step} />
           <div>
             {step===0 && <CalendarStep selected={date} onSelect={d=>{setDate(d);setTime(null)}} openingHours={openingHours} closedPeriods={closedPeriods} />}
+            {step===0 && date && toISO(date)==='2026-07-10' && (
+              <div style={{ background:'#E6F1FB', borderRadius:12, padding:'16px 18px', marginTop:16 }}>
+                <p style={{ fontWeight:600, fontSize:15, margin:'0 0 6px', color:'#0C447C' }}>✨ Underhuset's anniversary — celebrating 3 years</p>
+                <p style={{ fontSize:13, color:'#185FA5', margin:'0 0 10px', lineHeight:1.5 }}>
+                  On this date we celebrate with special set menus, live oboe music (bossa nova &amp; Latin, chill) and a dressed-up dining room. Our regular menu will not be available.
+                </p>
+                <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
+                  <span style={{ fontSize:12, color:'#0C447C', display:'flex', alignItems:'center', gap:4 }}>🍽 Special set menus</span>
+                  <span style={{ fontSize:12, color:'#0C447C', display:'flex', alignItems:'center', gap:4 }}>🎵 Live oboe</span>
+                  <span style={{ fontSize:12, color:'#0C447C', display:'flex', alignItems:'center', gap:4 }}>👔 Dressed-up evening</span>
+                </div>
+              </div>
+            )}
             {step===1 && <TimeStep selected={time} onSelect={setTime} date={date} openingHours={openingHours}
               lunchEnabled={lunchEnabled} dinnerEnabled={dinnerEnabled}
               onJoinWaitlist={t=>{ setWaitlistTime(t) }} />}
