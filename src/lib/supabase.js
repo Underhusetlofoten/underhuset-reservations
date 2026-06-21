@@ -237,9 +237,22 @@ export async function getAvailableSlots(date) {
     .eq('is_blocked', false)
     .eq('zone', 'interior')
 
-  const totalTables   = (tables || []).length
+  let totalTables   = (tables || []).length
   const totalCapacity = (tables || []).reduce((s, t) => s + t.capacity, 0)
   const BLOCK_H = 1.5
+
+  // Apply manual reservation limit if active and date is within range
+  const { data: limitSettings } = await supabase
+    .from('settings')
+    .select('key, value')
+    .in('key', ['res_limit_enabled', 'res_limit_from', 'res_limit_to', 'res_limit_max'])
+  const limitMap = {}
+  for (const s of (limitSettings || [])) limitMap[s.key] = s.value
+  if (limitMap.res_limit_enabled === 'true' && limitMap.res_limit_from && limitMap.res_limit_to) {
+    if (date >= limitMap.res_limit_from && date <= limitMap.res_limit_to) {
+      totalTables = parseInt(limitMap.res_limit_max || '4')
+    }
+  }
 
   const byTime = {}
   for (const r of reservations || []) {

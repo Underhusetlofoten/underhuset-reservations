@@ -1466,7 +1466,23 @@ function WaitlistTab({ waitlist, onRefresh }) {
 
 // ─── Tab: Tables ──────────────────────────────────────────────────────────────
 
-function TablesManager({ tables, groups, onRefresh }) {
+function TablesManager({ tables, groups, onRefresh, settings }) {
+  const [limitEnabled, setLimitEnabled] = useState(settings.res_limit_enabled === 'true')
+  const [limitFrom, setLimitFrom] = useState(settings.res_limit_from || '')
+  const [limitTo, setLimitTo] = useState(settings.res_limit_to || '')
+  const [limitMax, setLimitMax] = useState(settings.res_limit_max || '4')
+  const [limitSaving, setLimitSaving] = useState(false)
+
+  const saveLimit = async () => {
+    setLimitSaving(true)
+    try {
+      await setSetting('res_limit_enabled', String(limitEnabled))
+      await setSetting('res_limit_from', limitFrom)
+      await setSetting('res_limit_to', limitTo)
+      await setSetting('res_limit_max', String(limitMax))
+      onRefresh()
+    } finally { setLimitSaving(false) }
+  }
   const [form,    setForm]    = useState({ name:'', capacity:4, zone:'interior', is_blocked:false })
   const [editing, setEditing] = useState(null)
   const [confirm, setConfirm] = useState(null)
@@ -1642,6 +1658,35 @@ function TablesManager({ tables, groups, onRefresh }) {
 
       {confirm&&<Confirm message={`Permanently delete table "${confirm.name}"?`} onYes={async()=>{ await deleteTable(confirm.id); setConfirm(null); onRefresh() }} onNo={()=>setConfirm(null)}/>}
       {gConfirm&&<Confirm message={`Permanently delete group "${gConfirm.name}"?`} onYes={async()=>{ await deleteTableGroup(gConfirm.id); setGConfirm(null); onRefresh() }} onNo={()=>setGConfirm(null)}/>}
+
+      {/* Reservation limit for online bookings */}
+      <div style={{ ...S.card, marginTop:24 }}>
+        <h3 style={{ fontSize:15, fontWeight:700, color:B.dark, marginBottom:6 }}>🚦 Online Reservation Limit</h3>
+        <p style={{ fontSize:12, color:B.gray, marginBottom:16 }}>Limit how many online reservations can be made per hour during a specific period. Walk-ins are not affected — staff can still seat as many guests as they choose.</p>
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          <Toggle checked={limitEnabled} onChange={setLimitEnabled} label="Enable reservation limit"/>
+          {limitEnabled && (
+            <div style={{ display:'grid', gridTemplateColumns:'auto auto auto', gap:14, alignItems:'end' }}>
+              <div>
+                <label style={S.label}>From</label>
+                <input type="date" value={limitFrom} onChange={e=>setLimitFrom(e.target.value)}
+                  style={{...S.input,width:'auto'}} onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
+              </div>
+              <div>
+                <label style={S.label}>To</label>
+                <input type="date" value={limitTo} onChange={e=>setLimitTo(e.target.value)}
+                  style={{...S.input,width:'auto'}} onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
+              </div>
+              <div>
+                <label style={S.label}>Max reservations / hour</label>
+                <input type="number" min={1} max={20} value={limitMax} onChange={e=>setLimitMax(e.target.value)}
+                  style={{...S.input,width:80}} onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
+              </div>
+            </div>
+          )}
+          <div><Btn onClick={saveLimit} disabled={limitSaving}>{limitSaving ? 'Saving…' : 'Save limit settings'}</Btn></div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -2836,7 +2881,7 @@ function AdminContent({ role }) {
             {tab==='waitlist'  && <WaitlistTab waitlist={waitlist} onRefresh={loadAll}/>}
             {tab==='breakfast' && <BreakfastTab breakfast={breakfast} settings={settings} onRefresh={()=>loadAll(true)}/>}
             {tab==='stats'     && <StatsTab reservations={reservations} breakfast={breakfast} settings={settings}/>}
-            {tab==='tables'    && <TablesManager tables={tables} groups={groups} onRefresh={loadAll}/>}
+            {tab==='tables'    && <TablesManager tables={tables} groups={groups} onRefresh={loadAll} settings={settings}/>}
             {tab==='settings' && role==='admin' && <SettingsTab settings={settings} onSave={s=>setSettings(s)} tags={tags} onTagsChange={()=>getTags().then(setTags)}/>}
           </>
         )}
