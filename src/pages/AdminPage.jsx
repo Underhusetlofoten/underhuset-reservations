@@ -2371,8 +2371,8 @@ function SettingsTab({ settings, onSave, tags=[], onTagsChange }) {
                 style={{...S.input,width:70}} onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-              <span style={{ fontSize:13, color:B.gray }}>Waitlist confirmation window (hours)</span>
-              <input type="number" min={1} max={24} value={s.waitlist_confirm_hours||2} onChange={e=>upd('waitlist_confirm_hours',e.target.value)}
+              <span style={{ fontSize:13, color:B.gray }}>Waitlist confirmation window (minutes)</span>
+              <input type="number" min={5} max={1440} value={s.waitlist_confirm_minutes||20} onChange={e=>upd('waitlist_confirm_minutes',e.target.value)}
                 style={{...S.input,width:70}} onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
             </div>
           </div>
