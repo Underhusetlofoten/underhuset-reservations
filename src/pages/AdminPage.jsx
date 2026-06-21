@@ -1960,7 +1960,7 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
               <tr key={r.id} onMouseEnter={e=>e.currentTarget.style.background=B.orangePale}
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                 <td style={{...S.td,fontWeight:600}}>{fmtDate(r.date)}</td>
-                <td style={S.td}><span style={{ background:B.blueLight,color:B.blue,padding:'2px 8px',borderRadius:6,fontSize:12,fontWeight:600 }}>{r.hotel}</span></td>
+                <td style={S.td}><span style={{ background: ['Retro Rorbuer','Sakrisøy Gjestegård'].includes(r.hotel) ? B.blueLight : '#FEE2E2', color: ['Retro Rorbuer','Sakrisøy Gjestegård'].includes(r.hotel) ? B.blue : '#DC2626', padding:'2px 8px', borderRadius:6, fontSize:12, fontWeight:600 }}>{r.hotel}</span></td>
                 <td style={{...S.td,fontWeight:700}}>👥 {r.guests}</td>
                 <td style={S.td}>{r.contact_name}</td>
                 <td style={{...S.td,fontSize:12,color:B.gray}}>{r.contact_email}</td>
@@ -2017,7 +2017,7 @@ function BreakfastTab({ breakfast, settings, onRefresh }) {
                   {breakfast.filter(r=>(r.status==='cancelled'||r.status==='no_show')&&(!dateFilter||r.date===dateFilter)&&(hotelFilter.length===0||hotelFilter.includes(r.hotel))).map(r=>(
                     <tr key={r.id} style={{ borderTop:`1px solid ${B.grayLight}` }}>
                       <td style={{ padding:'10px 12px' }}>{fmtDate(r.date)}</td>
-                      <td style={{ padding:'10px 12px' }}><span style={{ background:B.blueLight,color:B.blue,padding:'2px 8px',borderRadius:6,fontSize:12,fontWeight:600 }}>{r.hotel}</span></td>
+                      <td style={{ padding:'10px 12px' }}><span style={{ background: ['Retro Rorbuer','Sakrisøy Gjestegård'].includes(r.hotel) ? B.blueLight : '#FEE2E2', color: ['Retro Rorbuer','Sakrisøy Gjestegård'].includes(r.hotel) ? B.blue : '#DC2626', padding:'2px 8px', borderRadius:6, fontSize:12, fontWeight:600 }}>{r.hotel}</span></td>
                       <td style={{ padding:'10px 12px', fontWeight:700 }}>👥 {r.guests}</td>
                       <td style={{ padding:'10px 12px' }}>{r.contact_name}</td>
                       <td style={{ padding:'10px 12px' }}>
