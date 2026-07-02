@@ -372,7 +372,7 @@ function GuestAutocomplete({ value, onChange, onSelect }) {
   )
 }
 
-function ReservationForm({ initial={}, tables=[], tags=[], groups=[], reservations=[], onSave, onCancel, onResendEmail, loading }) {
+function ReservationForm({ initial={}, tables=[], tags=[], groups=[], reservations=[], onSave, onCancel, onResendEmail, onUnmerge, loading }) {
   const initTableIds = typeof initial.table_ids==="string" ? (()=>{try{return JSON.parse(initial.table_ids||"[]")}catch{return initial.table_id?[initial.table_id]:[]}})() : (initial.table_ids || (initial.table_id ? [initial.table_id] : []))
   const initTagIds = (() => {
     try {
@@ -470,6 +470,7 @@ function ReservationForm({ initial={}, tables=[], tags=[], groups=[], reservatio
           onFocus={e=>e.target.style.borderColor=B.orange} onBlur={e=>e.target.style.borderColor=B.grayLight}/>
       </div>
       <div style={{ gridColumn:'1/-1', display:'flex', gap:12 }}>
+        {onUnmerge && <Btn variant="secondary" onClick={onUnmerge} style={{ flex:1, background:"#EDE9FE", color:"#7C3AED" }}>🔗 Unmerge</Btn>}
         {onResendEmail && <Btn variant="secondary" onClick={()=>onResendEmail(f)} style={{ flex:1, background:"#fff3e0", color:"#e65100" }}>📧 Resend confirmation</Btn>}
         <Btn variant="secondary" onClick={onCancel} style={{ flex:1 }}>Cancel</Btn>
         <Btn onClick={()=>onSave(f)} disabled={!valid||loading} style={{ flex:2 }}>
@@ -2721,6 +2722,24 @@ function AdminContent({ role }) {
     } finally { setSaving(false) }
   }
 
+  const handleUnmerge = async (r) => {
+    // Find absorbed reservation for same table/date/time
+    const { data } = await supabase
+      .from('reservations')
+      .select('*')
+      .eq('date', r.date)
+      .eq('time', r.time)
+      .eq('is_absorbed', true)
+      .is('deleted_at', null)
+      .limit(1)
+    if (data && data[0]) {
+      await updateReservation(data[0].id, { is_absorbed: false })
+    }
+    await updateReservation(r.id, { merged_with: null })
+    setEditModal(null)
+    loadAll()
+  }
+
   const handleDelete = async () => {
     await deleteReservation(deleteModal.id); setDeleteModal(null); loadAll()
   }
@@ -2902,7 +2921,7 @@ function AdminContent({ role }) {
 
       {todayNewModal && <Modal title="New manual reservation" onClose={()=>setTodayNewModal(false)}><ReservationForm initial={{ date:todayISO() }} tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleCreate} onCancel={()=>setTodayNewModal(false)} loading={saving}/></Modal>}
       {newModal    && <Modal title="New manual reservation" onClose={()=>setNewModal(false)}><ReservationForm tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleCreate} onCancel={()=>setNewModal(false)} loading={saving}/></Modal>}
-      {editModal   && <Modal title="Edit reservation" onClose={()=>setEditModal(null)}><ReservationForm initial={{...editModal, time:fmtTime(editModal.time), table_ids:(()=>{ try { return typeof editModal.table_ids==="string" ? JSON.parse(editModal.table_ids||"[]") : (editModal.table_ids||[]) } catch { return [] } })()}} tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleUpdate} onResendEmail={async(f)=>{ await sendEmail("confirmation",{reservation:{...editModal,...f}}) }} onCancel={()=>setEditModal(null)} loading={saving}/></Modal>}
+      {editModal   && <Modal title="Edit reservation" onClose={()=>setEditModal(null)}><ReservationForm initial={{...editModal, time:fmtTime(editModal.time), table_ids:(()=>{ try { return typeof editModal.table_ids==="string" ? JSON.parse(editModal.table_ids||"[]") : (editModal.table_ids||[]) } catch { return [] } })()}} tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleUpdate} onResendEmail={async(f)=>{ await sendEmail("confirmation",{reservation:{...editModal,...f}}) }} onUnmerge={editModal.merged_with ? ()=>handleUnmerge(editModal) : null} onCancel={()=>setEditModal(null)} loading={saving}/></Modal>}
       {deleteModal && <Confirm message={`Delete reservation for ${deleteModal.first_name} ${deleteModal.last_name} (${fmtDate(deleteModal.date)}, ${fmtTime(deleteModal.time)})?`} onYes={handleDelete} onNo={()=>setDeleteModal(null)}/>}
       {walkInModal && <WalkInModal tables={tables} groups={groups} reservations={reservations.filter(r=>r.date===todayISO())} onSave={handleWalkIn} onClose={()=>setWalkInModal(false)} loading={saving}/>}
     </div>
