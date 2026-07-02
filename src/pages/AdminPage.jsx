@@ -855,10 +855,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
                 }}>
                 <div style={{ fontSize:11, fontWeight:700, color:c.text, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r.first_name} {r.last_name||''}</div>
                 <div style={{ fontSize:10, color:c.text, opacity:0.8 }}>{fmtTime(r.time)} · {r.guests}p</div>
-                {r.merged_with && <div style={{ fontSize:10, color:c.text, fontWeight:700, background:'rgba(0,0,0,0.08)', borderRadius:4, padding:'1px 4px', marginTop:2, display:'flex', alignItems:'center', gap:4 }}>
-                  🔗 +{r.merged_with}
-                  <span onClick={e=>{e.stopPropagation();doUnmerge(r)}} style={{ cursor:'pointer', background:'rgba(255,255,255,0.3)', borderRadius:3, padding:'0 3px', fontSize:9 }}>✕ unmerge</span>
-                </div>}
+                {r.merged_with && <div style={{ fontSize:10, color:c.text, fontWeight:700, background:'rgba(0,0,0,0.08)', borderRadius:4, padding:'1px 4px', marginTop:2 }}>🔗 +{r.merged_with}</div>}
               </div>
             )
           })}
