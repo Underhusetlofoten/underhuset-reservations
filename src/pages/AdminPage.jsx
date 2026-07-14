@@ -1001,7 +1001,7 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
   const daysInMonth = new Date(calY,calM+1,0).getDate()
 
   const filteredRes = todayRes.filter(r=>{
-    if(!['pending','confirmed','seated'].includes(r.status)) return false
+    if(!['pending','confirmed','seated','blocked'].includes(r.status)) return false
     if(search){ const q=search.toLowerCase(); if(!`${r.first_name} ${r.last_name||''}`.toLowerCase().includes(q)) return false }
     if(timeFilter==='lunch')  { const h=parseInt(r.time); return h>=13&&h<17 }
     if(timeFilter==='evening'){ const h=parseInt(r.time); return h>=17 }
