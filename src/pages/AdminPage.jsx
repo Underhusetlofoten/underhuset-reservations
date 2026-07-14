@@ -668,11 +668,12 @@ function Timeline({ reservations, onEdit }) {
 
 
 
-function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
+function DiagramView({ todayRes, tables, onEditReservation, onRefresh, onNewReservation, todayDate }) {
   const [dragging, setDragging] = useState(null)
   const [dragOverTable, setDragOverTable] = useState(null)
   const [dragPos, setDragPos] = useState({ x:0, y:0 })
   const [mergePrompt, setMergePrompt] = useState(null)
+  const [cellClick, setCellClick] = useState(null)
   const hasMoved = useRef(false)
   const startPos = useRef({ x:0, y:0 })
   const containerRef = useRef(null)
@@ -715,6 +716,7 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
     seated:    { bg:'#DBEAFE', border:'#3B82F6', text:'#1E3A8A' },
     early_free:{ bg:'#F3F4F6', border:'#9CA3AF', text:'#6B7280' },
     completed:  { bg:'#F3F4F6', border:'#D1D5DB', text:'#9CA3AF' },
+    blocked:    { bg:'#FEE2E2', border:'#EF4444', text:'#991B1B' },
   }
 
   const doSwap = async (targetTableId) => {
@@ -822,7 +824,22 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
           <span style={{ fontSize:10, color:B.gray }}>👥{table.capacity}</span>
           {isBlocked && <span style={{ fontSize:9, color:B.orange, background:B.orangePale, borderRadius:4, padding:'1px 4px' }}>staff</span>}
         </div>
-        <div style={{ flex:1, position:'relative', overflow:'hidden' }}>
+        <div style={{ flex:1, position:'relative', overflow:'hidden' }}
+          onClick={e=>{
+            if (dragging || hasMoved.current) return
+            const rect = e.currentTarget.getBoundingClientRect()
+            const relX = (e.clientX - rect.left) / rect.width
+            const clickH = TL_S + relX * TL_R
+            const slotH = Math.floor(clickH * 2) / 2
+            const hh = Math.floor(slotH)
+            const mm = slotH % 1 === 0 ? '00' : '30'
+            const timeStr = `${String(hh).padStart(2,'0')}:${mm}:00`
+            const isOccupied = resos.some(r => {
+              const rH = timeToH(r.time)
+              return clickH >= rH && clickH < rH + BLOCK_H
+            })
+            if (!isOccupied) setCellClick({ tableId: table.id, time: timeStr, x: e.clientX, y: e.clientY })
+          }}>
           {quarters.map(h=>{
             const isHour = Number.isInteger(h)
             const isHalf = !isHour && (h*2)%1===0
@@ -887,6 +904,33 @@ function DiagramView({ todayRes, tables, onEditReservation, onRefresh }) {
           </div>
         </div>
       )}
+      {/* Cell click popup */}
+      {cellClick && (
+        <div style={{ position:'fixed', left:cellClick.x, top:cellClick.y, zIndex:9999, background:'#fff', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,.18)', padding:8, minWidth:180 }}
+          onPointerDown={e=>e.stopPropagation()}>
+          <div style={{ fontSize:11, color:B.gray, padding:'4px 8px', marginBottom:4 }}>
+            {cellClick.time.slice(0,5)} · #{tables.find(t=>t.id===cellClick.tableId)?.name}
+          </div>
+          <button onClick={()=>{ onNewReservation(cellClick.tableId, cellClick.time); setCellClick(null) }}
+            style={{ display:'block', width:'100%', padding:'8px 12px', border:'none', background:'none', textAlign:'left', cursor:'pointer', fontSize:13, borderRadius:8 }}
+            onMouseEnter={e=>e.target.style.background=B.orangePale} onMouseLeave={e=>e.target.style.background='none'}>
+            📅 New reservation
+          </button>
+          <button onClick={async()=>{
+            await createReservation({ date: todayDate, time: cellClick.time, guests:1, first_name:'BLOCKED', last_name:'', email:'block@underhuset.no', phone:'-', status:'blocked', is_manual:true, table_id: cellClick.tableId, table_ids:[cellClick.tableId] })
+            setCellClick(null); onRefresh()
+          }}
+            style={{ display:'block', width:'100%', padding:'8px 12px', border:'none', background:'none', textAlign:'left', cursor:'pointer', fontSize:13, borderRadius:8 }}
+            onMouseEnter={e=>e.target.style.background='#FEE2E2'} onMouseLeave={e=>e.target.style.background='none'}>
+            🚫 Block slot
+          </button>
+          <button onClick={()=>setCellClick(null)}
+            style={{ display:'block', width:'100%', padding:'6px 12px', border:'none', background:'none', textAlign:'left', cursor:'pointer', fontSize:12, color:B.gray, borderRadius:8 }}>
+            Cancel
+          </button>
+        </div>
+      )}
+      {cellClick && <div style={{ position:'fixed', inset:0, zIndex:9998 }} onClick={()=>setCellClick(null)}/>}
       {/* Floating drag ghost */}
       {dragging && (
         <div style={{ position:'fixed', left:dragPos.x+12, top:dragPos.y-20, zIndex:9999, background:B.orange, color:'#fff', borderRadius:8, padding:'4px 10px', fontSize:12, fontWeight:700, pointerEvents:'none', boxShadow:'0 4px 12px rgba(0,0,0,.2)' }}>
@@ -1114,7 +1158,7 @@ function Dashboard({ reservations, tables, tags=[], groups=[], onEditReservation
 
         {/* Content */}
         <div style={{ flex:1, overflow:'auto' }}>
-          {view==='diagram'&&<DiagramView todayRes={filteredRes} tables={tables} onEditReservation={onEditReservation} onRefresh={onRefresh}/>}
+          {view==='diagram'&&<DiagramView todayRes={filteredRes} tables={tables} onEditReservation={onEditReservation} onRefresh={onRefresh} onNewReservation={(tableId,time)=>{ onNewRes({ time: time.slice(0,5), table_ids:[tableId], table_id:tableId }) }} todayDate={selectedDate}/>}
           {view==='list'&&(
             <div style={{ padding:16 }}>
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
@@ -2618,7 +2662,7 @@ function AdminContent({ role }) {
   const [settings,     setSettings]     = useState({})
   const [loading,      setLoading]      = useState(true)
   const [newModal,     setNewModal]     = useState(false)
-  const [todayNewModal, setTodayNewModal] = useState(false)
+  const [todayNewModal, setTodayNewModal] = useState(null)
   const [editModal,    setEditModal]    = useState(null)
   const [deleteModal,  setDeleteModal]  = useState(null)
   const [walkInModal,  setWalkInModal]  = useState(false)
@@ -2696,7 +2740,7 @@ function AdminContent({ role }) {
         table_ids: f.table_ids||[],
         is_manual:true })
       if (settings.email_confirmation==='true') await sendEmail('confirmation', { reservation:r })
-      setNewModal(false); setTodayNewModal(false); loadAll()
+      setNewModal(false); setTodayNewModal(null); loadAll()
     } finally { setSaving(false) }
   }
 
@@ -2837,7 +2881,7 @@ function AdminContent({ role }) {
             {tab==='dashboard'    && <Dashboard reservations={reservations} tables={tables} tags={tags} groups={groups}
               onEditReservation={r=>setEditModal(r)}
               onSeated={handleSeated} onEarlyFree={handleEarlyFree}
-              onWalkIn={()=>setWalkInModal(true)} onNewRes={()=>setTodayNewModal(true)} onRefresh={loadAll}/>}
+              onWalkIn={()=>setWalkInModal(true)} onNewRes={(data)=>setTodayNewModal(data||true)} onRefresh={loadAll}/>}
             {tab==='reservations' && <>
               <ReservationsList reservations={reservations} tables={tables} tags={tags} groups={groups}
                 onNew={()=>setNewModal(true)} onEdit={r=>setEditModal(r)} onDelete={r=>setDeleteModal(r)} onCancel={handleCancel}
@@ -2916,7 +2960,7 @@ function AdminContent({ role }) {
         )}
       </div>
 
-      {todayNewModal && <Modal title="New manual reservation" onClose={()=>setTodayNewModal(false)}><ReservationForm initial={{ date:todayISO() }} tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleCreate} onCancel={()=>setTodayNewModal(false)} loading={saving}/></Modal>}
+      {todayNewModal && <Modal title="New manual reservation" onClose={()=>setTodayNewModal(null)}><ReservationForm initial={{ date:todayISO(), ...(todayNewModal!==true ? todayNewModal : {}) }} tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleCreate} onCancel={()=>setTodayNewModal(null)} loading={saving}/></Modal>}
       {newModal    && <Modal title="New manual reservation" onClose={()=>setNewModal(false)}><ReservationForm tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleCreate} onCancel={()=>setNewModal(false)} loading={saving}/></Modal>}
       {editModal   && <Modal title="Edit reservation" onClose={()=>setEditModal(null)}><ReservationForm initial={{...editModal, time:fmtTime(editModal.time), table_ids:(()=>{ try { return typeof editModal.table_ids==="string" ? JSON.parse(editModal.table_ids||"[]") : (editModal.table_ids||[]) } catch { return [] } })()}} tables={tables} tags={tags} groups={groups} reservations={reservations} onSave={handleUpdate} onResendEmail={async(f)=>{ await sendEmail("confirmation",{reservation:{...editModal,...f}}) }} onUnmerge={editModal.merged_with ? ()=>handleUnmerge(editModal) : null} onCancel={()=>setEditModal(null)} loading={saving}/></Modal>}
       {deleteModal && <Confirm message={`Delete reservation for ${deleteModal.first_name} ${deleteModal.last_name} (${fmtDate(deleteModal.date)}, ${fmtTime(deleteModal.time)})?`} onYes={handleDelete} onNo={()=>setDeleteModal(null)}/>}
