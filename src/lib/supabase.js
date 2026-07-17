@@ -13,6 +13,7 @@ export async function getReservations({ date, status } = {}) {
     .is('deleted_at', null)
     .neq('is_absorbed', true)
     .order('date').order('time')
+    .limit(3000)
   if (date)   q = q.eq('date', date)
   if (status) q = q.eq('status', status)
   const { data, error } = await q
