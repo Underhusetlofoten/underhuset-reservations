@@ -449,3 +449,4 @@ export async function getBreakfastAvailability(date, maxGuests) {
   const used = (data||[]).reduce((s,r)=>s+r.guests, 0)
   return Math.max(0, maxGuests - used)
 }
+// limit 3000
