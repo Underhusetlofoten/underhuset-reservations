@@ -274,7 +274,15 @@ export async function getAvailableSlots(date) {
     }
   }
 
-  return { byTime, totalCapacity, totalTables }
+  // Count exact reservations per slot for manual limit
+  const byTimeExact = {}
+  for (const r of reservations || []) {
+    const key = r.time.slice(0,5) + ':00'
+    byTimeExact[key] = (byTimeExact[key] || 0) + 1
+  }
+
+  return { byTime, byTimeExact, totalCapacity, totalTables, limitActive: limitMap.res_limit_enabled === 'true' }
+}
 }
 
 export async function autoAssignTable(date, time, guests) {
