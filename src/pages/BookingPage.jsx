@@ -189,7 +189,11 @@ function TimeStep({ selected, onSelect, onJoinWaitlist, date, openingHours, lunc
   const dinnerTimes = dinnerEnabled ? visibleTimes.filter(t => timeToH(t) >= 16) : []
 
   const isFull = (time) => {
-    const key  = time + ':00'
+    const key = time + ':00'
+    if (availability.limitActive) {
+      const used = availability.byTimeExact?.[key] || 0
+      return used >= (availability.totalTables || 999)
+    }
     const used = availability.byTime?.[key] || 0
     return used >= (availability.totalTables || 999)
   }
