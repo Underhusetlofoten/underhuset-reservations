@@ -283,7 +283,6 @@ export async function getAvailableSlots(date) {
 
   return { byTime, byTimeExact, totalCapacity, totalTables, limitActive: limitMap.res_limit_enabled === 'true' }
 }
-}
 
 export async function autoAssignTable(date, time, guests) {
   const BLOCK_H = 1.5
