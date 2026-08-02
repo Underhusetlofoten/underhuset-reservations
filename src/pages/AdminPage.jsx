@@ -2756,6 +2756,7 @@ const TABS = [
   { id:'reservations', icon:'📋', label:'Reservations' },
   { id:'waitlist',     icon:'⏳', label:'Waitlist'     },
   { id:'breakfast',    icon:'🍳', label:'Breakfast'    },
+  { id:'groups',       icon:'👥', label:'Groups'      },
   { id:'stats',        icon:'📈', label:'Stats'        },
   { id:'tables',       icon:'🪑', label:'Tables'       },
   { id:'settings',     icon:'⚙️', label:'Settings'     },
