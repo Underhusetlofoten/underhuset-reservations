@@ -3024,8 +3024,8 @@ function AdminContent({ role }) {
           )}
         </div>
         <div style={{ display:'flex', gap:8 }}>
-          <button onClick={loadAll} className="desktop-tabs" style={{ background:'none', border:'1px solid rgba(255,255,255,.2)', borderRadius:8, cursor:'pointer', padding:'4px 12px', color:'rgba(255,255,255,.7)', fontSize:12 }}>↻ Refresh</button>
-          <a href="/" target="_blank" style={{ background:'none', border:`1px solid rgba(255,255,255,.2)`, borderRadius:8, cursor:'pointer', padding:'4px 12px', color:'rgba(255,255,255,.7)', fontSize:12, textDecoration:'none' }}>🌐 Web</a>
+          <button onClick={async()=>{ const b=document.getElementById("rb"); if(b){b.style.display="inline-block";b.style.animation="spin 0.6s linear";setTimeout(()=>{b.style.animation=""},700)} await loadAll() }} className="desktop-tabs" style={{ background:'none', border:'1px solid rgba(255,255,255,.2)', borderRadius:8, cursor:'pointer', padding:'4px 12px', color:'rgba(255,255,255,.7)', fontSize:12 }}><span id="rb">↻</span></button>
+          <a href="/" target="_blank" style={{ background:'none', border:`1px solid rgba(255,255,255,.2)`, borderRadius:8, cursor:'pointer', padding:'4px 12px', color:'rgba(255,255,255,.7)', fontSize:12, textDecoration:'none' }}>🌐</a>
         </div>
       </div>
 
