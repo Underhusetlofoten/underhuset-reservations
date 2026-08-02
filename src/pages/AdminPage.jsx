@@ -1746,6 +1746,160 @@ function TablesManager({ tables, groups, onRefresh, settings }) {
   )
 }
 
+
+// ─── Tab: Groups ─────────────────────────────────────────────────────────────
+
+function GroupsTab({ reservations }) {
+  const today = new Date()
+  const [calY, setCalY] = useState(today.getFullYear())
+  const [calM, setCalM] = useState(today.getMonth())
+
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+  const DAYS   = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+
+  // Filter reservations with 8+ guests, not cancelled
+  const groupRes = reservations.filter(r =>
+    r.guests >= 8 &&
+    !['cancelled','no_show','deleted'].includes(r.status)
+  )
+
+  // Group by date
+  const byDate = {}
+  for (const r of groupRes) {
+    if (!byDate[r.date]) byDate[r.date] = []
+    byDate[r.date].push(r)
+  }
+
+  // Calendar helpers
+  const firstDay = new Date(calY, calM, 1)
+  const lastDay  = new Date(calY, calM + 1, 0)
+  const startDow = (firstDay.getDay() + 6) % 7 // Mon=0
+  const daysInMonth = lastDay.getDate()
+
+  const cells = []
+  for (let i = 0; i < startDow; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+  while (cells.length % 7 !== 0) cells.push(null)
+
+  const toISO = (d) => `${calY}-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+  const todayISO = today.toISOString().split('T')[0]
+
+  const printCalendar = () => {
+    const win = window.open('', '_blank')
+    const rows = []
+    let row = []
+    for (const cell of cells) {
+      row.push(cell)
+      if (row.length === 7) { rows.push(row); row = [] }
+    }
+
+    const html = `<!DOCTYPE html><html><head><title>Group Reservations — ${MONTHS[calM]} ${calY}</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 24px; color: #222; }
+      h1 { color: #3C4242; font-size: 20px; margin-bottom: 4px; }
+      .sub { font-size: 12px; color: #999; margin-bottom: 20px; }
+      table { width: 100%; border-collapse: collapse; }
+      th { background: #F99D54; color: #fff; padding: 8px; text-align: center; font-size: 12px; }
+      td { border: 1px solid #eee; vertical-align: top; padding: 6px; height: 80px; width: 14.28%; }
+      .day-num { font-weight: 700; font-size: 13px; color: #3C4242; margin-bottom: 4px; }
+      .group { background: #FEF4EB; border-left: 3px solid #F99D54; padding: 2px 4px; margin-bottom: 2px; font-size: 10px; border-radius: 3px; }
+      .group strong { display: block; color: #3C4242; }
+      .empty { background: #fafafa; }
+      @media print { body { padding: 8px; } }
+    </style></head><body>
+    <h1>🍽 Underhuset — Group Reservations</h1>
+    <div class="sub">${MONTHS[calM]} ${calY} · Groups of 8+ guests</div>
+    <table>
+      <thead><tr>${DAYS.map(d=>`<th>${d}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${rows.map(row=>`<tr>${row.map(d=>{
+          if (!d) return '<td class="empty"></td>'
+          const iso = `${calY}-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+          const res = byDate[iso] || []
+          return `<td>
+            <div class="day-num">${d}</div>
+            ${res.map(r=>`<div class="group"><strong>${r.first_name} ${r.last_name||''}</strong>${r.guests} guests · ${r.time?.slice(0,5)||''}</div>`).join('')}
+          </td>`
+        }).join('')}</tr>`).join('')}
+      </tbody>
+    </table>
+    <script>window.onload=()=>window.print()</script>
+    </body></html>`
+
+    win.document.write(html)
+    win.document.close()
+  }
+
+  return (
+    <div>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
+        <h2 style={{ fontFamily:'Playfair Display,serif', fontSize:22, color:B.dark, fontWeight:600 }}>👥 Group Reservations (8+ guests)</h2>
+        <Btn onClick={printCalendar} variant="secondary">🖨 Print / PDF</Btn>
+      </div>
+
+      {/* Month navigation */}
+      <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:20 }}>
+        <Btn size="sm" variant="secondary" onClick={()=>{ if(calM===0){setCalM(11);setCalY(y=>y-1)}else setCalM(m=>m-1) }}>←</Btn>
+        <span style={{ fontWeight:700, fontSize:16, color:B.dark, minWidth:160, textAlign:'center' }}>{MONTHS[calM]} {calY}</span>
+        <Btn size="sm" variant="secondary" onClick={()=>{ if(calM===11){setCalM(0);setCalY(y=>y+1)}else setCalM(m=>m+1) }}>→</Btn>
+      </div>
+
+      {/* Calendar */}
+      <div style={{ ...S.card, padding:0, overflow:'auto' }}>
+        <table style={{ width:'100%', borderCollapse:'collapse', minWidth:600 }}>
+          <thead>
+            <tr>{DAYS.map(d=><th key={d} style={{ background:B.orange, color:'#fff', padding:'10px 8px', fontSize:12, fontWeight:700, textAlign:'center' }}>{d}</th>)}</tr>
+          </thead>
+          <tbody>
+            {Array.from({length: Math.ceil(cells.length/7)}, (_,i)=>cells.slice(i*7,i*7+7)).map((row,ri)=>(
+              <tr key={ri}>
+                {row.map((d,di)=>{
+                  const iso = d ? toISO(d) : null
+                  const res = iso ? (byDate[iso]||[]) : []
+                  const isToday = iso === todayISO
+                  return (
+                    <td key={di} style={{ border:`1px solid ${B.grayLight}`, verticalAlign:'top', padding:6, height:90, width:'14.28%', background: !d ? '#FAFAFA' : isToday ? B.orangePale : '#fff' }}>
+                      {d && <>
+                        <div style={{ fontWeight:700, fontSize:13, color: isToday ? B.orange : B.dark, marginBottom:4 }}>{d}</div>
+                        {res.map(r=>(
+                          <div key={r.id} style={{ background:'#FEF4EB', borderLeft:`3px solid ${B.orange}`, padding:'2px 4px', marginBottom:2, borderRadius:3 }}>
+                            <div style={{ fontSize:10, fontWeight:700, color:B.dark }}>{r.first_name} {r.last_name||''}</div>
+                            <div style={{ fontSize:10, color:B.gray }}>👥 {r.guests} · {r.time?.slice(0,5)||''}</div>
+                          </div>
+                        ))}
+                      </>}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* List below */}
+      {Object.keys(byDate).sort().filter(d=>d>=todayISO).length > 0 && (
+        <div style={{ marginTop:24 }}>
+          <h3 style={{ fontSize:15, fontWeight:700, color:B.dark, marginBottom:12 }}>Upcoming groups</h3>
+          {Object.keys(byDate).sort().filter(d=>d>=todayISO).map(date=>(
+            <div key={date} style={{ ...S.card, marginBottom:8, padding:'12px 16px' }}>
+              <div style={{ fontWeight:700, fontSize:14, color:B.dark, marginBottom:6 }}>{new Date(date+'T12:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+              {byDate[date].map(r=>(
+                <div key={r.id} style={{ display:'flex', gap:12, fontSize:13, color:B.gray, padding:'4px 0', borderTop:`1px solid ${B.grayLight}` }}>
+                  <span style={{ fontWeight:600, color:B.dark }}>{r.time?.slice(0,5)}</span>
+                  <span>{r.first_name} {r.last_name||''}</span>
+                  <span style={{ background:B.orangePale, color:B.orange, padding:'1px 8px', borderRadius:10, fontWeight:700 }}>👥 {r.guests}</span>
+                  {r.notes && <span style={{ fontStyle:'italic', color:B.gray }}>{r.notes}</span>}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Tab: Breakfast ───────────────────────────────────────────────────────────
 
 function BreakfastTab({ breakfast, settings, onRefresh }) {
@@ -2952,6 +3106,7 @@ function AdminContent({ role }) {
               )}
             </>}
             {tab==='waitlist'  && <WaitlistTab waitlist={waitlist} onRefresh={loadAll}/>}
+            {tab==='groups'    && <GroupsTab reservations={reservations} />}
             {tab==='breakfast' && <BreakfastTab breakfast={breakfast} settings={settings} onRefresh={()=>loadAll(true)}/>}
             {tab==='stats'     && <StatsTab reservations={reservations} breakfast={breakfast} settings={settings}/>}
             {tab==='tables'    && <TablesManager tables={tables} groups={groups} onRefresh={loadAll} settings={settings}/>}
